@@ -1,6 +1,6 @@
 /* Service worker — caches the app shell so the app opens and works offline.
    Bump CACHE_NAME whenever app shell files change to force an update. */
-const CACHE_NAME = 'moneyflow-shell-v1';
+const CACHE_NAME = 'moneyflow-shell-v2';
 const SHELL_FILES = [
   './',
   './index.html',
