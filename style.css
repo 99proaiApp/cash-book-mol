@@ -77,7 +77,7 @@ body{
   transition:background .3s ease, color .3s ease;
 }
 
-.bg-blob{position:fixed; border-radius:50%; filter:blur(60px); z-index:0; pointer-events:none; opacity:0.55; transition:background .3s ease;}
+.bg-blob{position:fixed; border-radius:50%; filter:blur(60px); z-index:0; pointer-events:none; opacity:0.55;}
 .bg-blob.b1{width:260px;height:260px; background:var(--blob-1); top:-60px; left:-60px;}
 .bg-blob.b2{width:230px;height:230px; background:var(--blob-2); top:260px; right:-75px;}
 .bg-blob.b3{width:210px;height:210px; background:var(--blob-3); bottom:80px; left:-55px;}
@@ -235,7 +235,7 @@ body{
   background-size:250% 100%;
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:#B8860B;
   filter:drop-shadow(0 1px 6px rgba(184,134,11,0.25));
-  animation:shineSweep 3.2s ease-in-out infinite;
+  animation:shineSweep 4.8s ease-in-out infinite alternate;
   display:inline-block;
 }
 .mini-caption{font-size:10px; color:var(--ink-soft);}
@@ -271,7 +271,7 @@ body{
   background-size:250% 100%;
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--net);
   filter:drop-shadow(0 2px 10px rgba(47,111,237,0.28));
-  animation:shineSweep 3.2s ease-in-out infinite;
+  animation:shineSweep 4.8s ease-in-out infinite alternate;
   display:inline-block;
 }
 .hero-unit{font-size:9.5px; color:var(--ink-soft); margin-top:3px;}
@@ -425,11 +425,11 @@ body{
   flex:1; padding:8px; border-radius:var(--radius-sm); border:1px solid rgba(47,111,237,0.18);
   background:var(--surface-1); font-family:inherit; font-size:12.5px; color:var(--ink);
 }
-.period-list{max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-bottom:8px; padding-right:2px;}
+.period-list{max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:8px; padding-right:2px;}
 .period-row{
   display:flex; justify-content:space-between; align-items:center;
   background:var(--surface-2); border:1px solid rgba(47,111,237,0.08);
-  border-radius:var(--radius-sm); padding:8px 10px;
+  border-radius:var(--radius-sm); padding:5px 10px;
 }
 .period-row.empty{background:rgba(226,55,68,0.05); border-color:rgba(226,55,68,0.14);}
 .period-row-info{display:flex; flex-direction:column; gap:1px;}
