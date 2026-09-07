@@ -61,6 +61,8 @@
 *{box-sizing:border-box;}
 
 html, body{height:100%;}
+html{transition:filter .16s ease;}
+html.theme-swapping{filter:brightness(0.72) saturate(0.85);}
 body{
   margin:0;
   color:var(--ink);
@@ -485,7 +487,7 @@ body{
 }
 
 @media (prefers-reduced-motion: reduce){
-  .zoomable, .toast, .card-body, .chevron-btn, .floaty, .floaty-net, .mini-value, .hero-number.net{animation:none !important; transition:none !important;}
+  .zoomable, .toast, .card-body, .chevron-btn, .floaty, .floaty-net, .mini-value, .hero-number.net, html{animation:none !important; transition:none !important;}
 }
 
 /* ===== category breakdown chart legend ===== */
