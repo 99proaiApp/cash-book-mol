@@ -84,11 +84,6 @@ function monthlyTotals(dateStr){
   return { income, expense, net };
 }
 function monthlyNetTotal(dateStr){ return monthlyTotals(dateStr).net; }
-function prevMonthDateStr(dateStr){
-  const d = new Date(dateStr + 'T00:00:00');
-  const pm = new Date(d.getFullYear(), d.getMonth()-1, 1);
-  return localDateStr(pm);
-}
 
 /* ---------- toast ---------- */
 function showToast(message, type='success', action=null){
@@ -255,33 +250,6 @@ function renderCards(rec){
   document.getElementById('cardMonthlyNet').textContent = fmtBaht(monthNow.net);
   document.getElementById('monthlyNetCaption').textContent =
     `รวมรายรับหักรายจ่ายและเงินทอน ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
-
-  renderMonthlyCompare(monthNow);
-}
-
-/* ---------- month-over-month comparison chips ---------- */
-function pctChange(cur, prev){
-  if(prev === 0) return cur === 0 ? 0 : 100;
-  return ((cur - prev) / Math.abs(prev)) * 100;
-}
-function renderMonthlyCompare(monthNow){
-  const monthPrev = monthlyTotals(prevMonthDateStr(activeDate));
-  const rows = [
-    { label:'รายรับ', cur:monthNow.income, prev:monthPrev.income, higherIsGood:true },
-    { label:'รายจ่าย', cur:monthNow.expense, prev:monthPrev.expense, higherIsGood:false },
-    { label:'สุทธิ', cur:monthNow.net, prev:monthPrev.net, higherIsGood:true },
-  ];
-  const el = document.getElementById('monthlyCompare');
-  el.innerHTML = rows.map(r=>{
-    const pct = pctChange(r.cur, r.prev);
-    if(Math.abs(pct) < 0.5){
-      return `<span class="compare-chip flat">${r.label} ・ ${pct.toFixed(0)}%</span>`;
-    }
-    const arrow = pct >= 0 ? '▲' : '▼';
-    const good = pct >= 0 ? r.higherIsGood : !r.higherIsGood;
-    const cls = good ? 'up' : 'down';
-    return `<span class="compare-chip ${cls}">${r.label} ${arrow}${Math.abs(pct).toFixed(0)}%</span>`;
-  }).join('');
 }
 
 /* ---------- click feedback (glow pulse on green buttons) ---------- */
