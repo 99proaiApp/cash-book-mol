@@ -477,6 +477,14 @@ body{
 .modal-btn.ghost{background:rgba(47,111,237,0.1); color:var(--ink);}
 .modal-btn.primary{background:var(--net); color:#fff;}
 .modal-btn.danger{background:var(--expense); color:#fff;}
+.auth-input{
+  width:100%; box-sizing:border-box; padding:11px 12px; margin-bottom:9px;
+  border-radius:12px; border:1px solid rgba(120,130,150,0.3);
+  background:rgba(255,255,255,0.6); color:var(--ink); font-size:13.5px; font-family:inherit;
+}
+[data-theme="dark"] .auth-input{ background:rgba(255,255,255,0.08); color:var(--ink); }
+.auth-error{ color:var(--expense); font-size:12px; min-height:16px; margin:0 0 8px !important; }
+.auth-loading{ text-align:center; opacity:.7; font-size:12.5px; margin:10px 0 0; }
 
 @media (min-width:480px){
   .field-grid{flex-direction:row;gap:9px;}

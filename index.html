@@ -24,6 +24,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -34,6 +37,22 @@
 <div class="bg-blob b4"></div>
 
 <div id="toast-container"></div>
+
+<!-- ===== AUTH OVERLAY (login / signup) ===== -->
+<div class="modal-overlay open" id="authOverlay">
+  <div class="modal-box glass">
+    <h3>🔐 เข้าสู่ระบบ</h3>
+    <p>เข้าสู่ระบบด้วยอีเมลเพื่อซิงค์ข้อมูลออนไลน์ ใช้ได้ทุกเครื่อง</p>
+    <input type="email" id="authEmail" class="auth-input" placeholder="อีเมล" autocomplete="email">
+    <input type="password" id="authPassword" class="auth-input" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)" autocomplete="current-password">
+    <p id="authError" class="auth-error"></p>
+    <div class="modal-actions modal-actions-col">
+      <button class="modal-btn primary" id="authLoginBtn">เข้าสู่ระบบ</button>
+      <button class="modal-btn ghost" id="authSignupBtn">สมัครสมาชิกใหม่</button>
+    </div>
+    <p id="authLoading" class="auth-loading" hidden>กำลังดำเนินการ...</p>
+  </div>
+</div>
 
 <!-- ===== CONFIRM MODAL ===== -->
 <div class="modal-overlay" id="confirmModal">
@@ -89,6 +108,9 @@
     </button>
     <button class="icon-btn" id="btnDownload" title="ส่งออก / นำเข้า" aria-label="ส่งออก / นำเข้า">
       <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+    </button>
+    <button class="icon-btn" id="btnLogout" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </button>
   </div>
 </header>

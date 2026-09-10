@@ -7,6 +7,22 @@ const TITLE_KEY = 'moneyflow_app_title_v1';
 const DAY_NAMES_TH = ['วันอาทิตย์','วันจันทร์','วันอังคาร','วันพุธ','วันพฤหัสบดี','วันศุกร์','วันเสาร์'];
 const MONTH_NAMES_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 
+/* ---------- firebase (auth + cloud sync) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCBozEEkbcISy7LGlIyK9QDe9FMlW3Erbg",
+  authDomain: "money-tracker-add3e.firebaseapp.com",
+  projectId: "money-tracker-add3e",
+  storageBucket: "money-tracker-add3e.firebasestorage.app",
+  messagingSenderId: "128919236204",
+  appId: "1:128919236204:web:76c220f25f02d06a7c7249"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
+let cloudSyncTimer = null;
+let appStarted = false;
+
 let records = {};
 let activeDate = todayStr();
 let chartPeriod = 'day';
@@ -43,7 +59,90 @@ function thaiDate(dateStr){
 function loadAll(){
   try{ records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }catch(e){ records = {}; }
 }
-function saveAll(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+function saveAll(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  queueCloudSync();
+}
+
+/* ---------- cloud sync (Firestore: one document per user) ---------- */
+function queueCloudSync(){
+  if(!currentUser) return;
+  if(cloudSyncTimer) clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(()=>{
+    db.collection('users').doc(currentUser.uid).set({ records })
+      .catch(e=> console.error('บันทึกข้อมูลขึ้น Firebase ไม่สำเร็จ:', e));
+  }, 800);
+}
+async function loadRecordsFromCloud(){
+  try{
+    const doc = await db.collection('users').doc(currentUser.uid).get();
+    if(doc.exists && doc.data().records){
+      records = doc.data().records;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    } else {
+      // first login on this account — migrate whatever's in localStorage up to the cloud
+      loadAll();
+      await db.collection('users').doc(currentUser.uid).set({ records });
+    }
+  }catch(e){
+    console.error('โหลดข้อมูลจาก Firebase ไม่สำเร็จ ใช้ข้อมูลในเครื่องไปก่อน:', e);
+    loadAll();
+  }
+}
+
+/* ---------- auth UI ---------- */
+function authErrorMessage(code){
+  const map = {
+    'auth/invalid-email':'อีเมลไม่ถูกต้อง',
+    'auth/user-not-found':'ไม่พบบัญชีนี้ ลองสมัครสมาชิกใหม่',
+    'auth/wrong-password':'รหัสผ่านไม่ถูกต้อง',
+    'auth/invalid-credential':'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+    'auth/email-already-in-use':'อีเมลนี้ถูกใช้แล้ว ลองเข้าสู่ระบบแทน',
+    'auth/weak-password':'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+    'auth/too-many-requests':'ลองผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่'
+  };
+  return map[code] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+}
+function wireAuthUI(){
+  const emailInput = document.getElementById('authEmail');
+  const passInput = document.getElementById('authPassword');
+  const errorEl = document.getElementById('authError');
+  const loadingEl = document.getElementById('authLoading');
+  const setError = (msg)=> errorEl.textContent = msg;
+
+  document.getElementById('authLoginBtn').addEventListener('click', ()=>{
+    setError('');
+    const email = emailInput.value.trim(), pass = passInput.value;
+    if(!email || !pass) return setError('กรุณากรอกอีเมลและรหัสผ่าน');
+    loadingEl.hidden = false;
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(err=> setError(authErrorMessage(err.code)))
+      .finally(()=> loadingEl.hidden = true);
+  });
+  document.getElementById('authSignupBtn').addEventListener('click', ()=>{
+    setError('');
+    const email = emailInput.value.trim(), pass = passInput.value;
+    if(!email || !pass) return setError('กรุณากรอกอีเมลและรหัสผ่าน');
+    if(pass.length < 6) return setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+    loadingEl.hidden = false;
+    auth.createUserWithEmailAndPassword(email, pass)
+      .catch(err=> setError(authErrorMessage(err.code)))
+      .finally(()=> loadingEl.hidden = true);
+  });
+  const logoutBtn = document.getElementById('btnLogout');
+  if(logoutBtn) logoutBtn.addEventListener('click', ()=>{ auth.signOut(); });
+
+  auth.onAuthStateChanged(async (user)=>{
+    currentUser = user;
+    if(user){
+      document.getElementById('authOverlay').classList.remove('open');
+      await loadRecordsFromCloud();
+      startApp();
+    } else {
+      document.getElementById('authOverlay').classList.add('open');
+    }
+  });
+}
 function emptyRecord(date){
   return { date, income:{note:0,coin:0,app:0}, expenses:[], change:{coin:0,note:0} };
 }
@@ -1168,7 +1267,13 @@ function saveTitle(){
 
 /* ---------- events ---------- */
 document.addEventListener('DOMContentLoaded', ()=>{
-  loadAll();
+  wireAuthUI();
+});
+
+function startApp(){
+  if(appStarted) return; // guard against double init if auth state fires more than once
+  appStarted = true;
+
   loadTitle();
   initTheme();
   initSound();
@@ -1344,7 +1449,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(e.target === panel) panel.classList.remove('open');
     });
   });
-});
+}
 
 /* ---------- PWA: register service worker (offline app shell) ---------- */
 if('serviceWorker' in navigator){
