@@ -159,7 +159,7 @@ function wireAuthUI(){
   });
 }
 function emptyRecord(date){
-  return { date, income:{note:0,coin:0,app:0}, expenses:[], change:{coin:0,note:0} };
+  return { date, income:{note:0,coin:0,app:0}, expenses:[], capital:[], change:{coin:0,note:0} };
 }
 function getRecord(date){
   if(!records[date]) records[date] = emptyRecord(date);
@@ -167,6 +167,7 @@ function getRecord(date){
   if(!records[date].change) records[date].change = {coin:0, note:0};
   if(!records[date].income) records[date].income = {note:0, coin:0, app:0};
   if(!records[date].expenses) records[date].expenses = [];
+  if(!records[date].capital) records[date].capital = [];
   return records[date];
 }
 function sortedDates(){ return Object.keys(records).sort(); }
@@ -186,10 +187,12 @@ function stampEditor(rec){
 function computeTotals(rec){
   const totalIncome = (rec.income.note||0) + (rec.income.coin||0) + (rec.income.app||0);
   const totalExpense = rec.expenses.reduce((s,e)=> s + (e.amount||0), 0);
+  const totalCapital = (rec.capital||[]).reduce((s,c)=> s + (c.amount||0), 0);
   const totalChange = (rec.change.coin||0) + (rec.change.note||0);
   const incomeReal = totalIncome - totalChange;
-  const net = incomeReal - totalExpense;
-  return { totalIncome, totalExpense, totalChange, incomeReal, net };
+  // กำไรสุทธิแท้จริง: หักทั้งรายจ่ายและทุนลงของ/เงินบ้านออกจากรายรับแท้จริง
+  const net = incomeReal - totalExpense - totalCapital;
+  return { totalIncome, totalExpense, totalCapital, totalChange, incomeReal, net };
 }
 // สรุปยอดของเดือน (รายรับแท้จริง / รายจ่าย / สุทธิ) รวมทุกวันในเดือนนั้น
 function monthlyTotals(dateStr){
@@ -325,6 +328,7 @@ function renderForm(){
   document.getElementById('changeNote').value = rec.change.note || '';
 
   renderExpenseList(rec);
+  renderCapitalList(rec);
   renderCards(rec);
   renderDateUI();
 }
@@ -349,18 +353,39 @@ function renderExpenseList(rec){
   document.getElementById('expenseTotal').textContent = fmtBaht(rec.expenses.reduce((s,e)=>s+e.amount,0));
 }
 
+function renderCapitalList(rec){
+  const list = document.getElementById('capitalList');
+  list.innerHTML = '';
+  (rec.capital||[]).forEach(c=>{
+    const div = document.createElement('div');
+    div.className = 'expense-item';
+    div.innerHTML = `
+      <div class="ei-info">
+        <span>${escapeHtml(c.desc)}</span>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <span class="ei-amount">${fmtBaht(c.amount)}</span>
+        <button class="ei-del" data-delcap="${c.id}" aria-label="ลบรายการ">✕</button>
+      </div>`;
+    list.appendChild(div);
+  });
+  document.getElementById('capitalTotal').textContent = fmtBaht((rec.capital||[]).reduce((s,c)=>s+c.amount,0));
+}
+
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function renderCards(rec){
   const t = computeTotals(rec);
   document.getElementById('cardIncomeReal').textContent = fmtNum(t.incomeReal);
   document.getElementById('cardExpense').textContent = fmtNum(t.totalExpense);
+  document.getElementById('cardCapital').textContent = fmtNum(t.totalCapital);
   document.getElementById('cardNet').textContent = fmtNum(t.net);
   document.getElementById('heroCaption').innerHTML =
-    `เงินทอน <b>${fmtNum(t.totalChange)} ฿</b> — (รายรับ ${fmtNum(t.totalIncome)} – ${fmtNum(t.totalChange)} = รายรับแท้จริง ${fmtNum(t.incomeReal)} ฿)`;
+    `เงินทอน <b>${fmtNum(t.totalChange)} ฿</b> — (รายรับ ${fmtNum(t.totalIncome)} – ${fmtNum(t.totalChange)} = รายรับแท้จริง ${fmtNum(t.incomeReal)} ฿) · เงินบ้าน ${fmtNum(t.totalCapital)} ฿ หักออกจากกำไรโดยตรง`;
 
   document.getElementById('chipIncome').textContent = fmtNum(t.totalIncome) + ' ฿';
   document.getElementById('chipExpense').textContent = fmtNum(t.totalExpense) + ' ฿';
+  document.getElementById('chipCapital').textContent = fmtNum(t.totalCapital) + ' ฿';
   document.getElementById('chipChange').textContent = fmtNum(t.totalChange) + ' ฿';
 
   document.getElementById('incomeTotal').textContent = fmtBaht(t.totalIncome);
@@ -370,7 +395,7 @@ function renderCards(rec){
   const d = new Date(activeDate + 'T00:00:00');
   document.getElementById('cardMonthlyNet').textContent = fmtBaht(monthNow.net);
   document.getElementById('monthlyNetCaption').textContent =
-    `รวมรายรับหักรายจ่ายและเงินทอน ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
+    `รวมรายรับหักรายจ่าย เงินบ้าน และเงินทอน ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
 }
 
 /* ---------- click feedback (glow pulse on green buttons) ---------- */
@@ -514,6 +539,40 @@ async function deleteExpense(id){
   rec.expenses = rec.expenses.filter(e => e.id !== id);
   stampEditor(rec);
   saveAll(); renderExpenseList(rec); renderCards(rec);
+  playTone('delete');
+  showToast('ลบรายการสำเร็จ ✓', 'error', { label:'เลิกทำ', onClick: ()=> restoreRecordSnapshot(snapDate, snapshot) });
+}
+
+async function addCapital(){
+  const desc = document.getElementById('capitalDesc').value.trim();
+  const amount = num('capitalAmount');
+  if(!desc || amount <= 0){
+    showToast('กรุณากรอกรายการและจำนวนเงินให้ถูกต้อง', 'error');
+    return;
+  }
+  const ok = await confirmAction('ยืนยันเพิ่มรายจ่ายเงินบ้าน', dateAwareMessage(`เพิ่มรายการ "${desc}" จำนวน ${fmtBaht(amount)} ใช่หรือไม่?`));
+  if(!ok) return;
+  const snapshot = snapshotRecord(activeDate);
+  const snapDate = activeDate;
+  const rec = getRecord(activeDate);
+  rec.capital.push({ id: uid(), desc, amount, by: currentUser ? currentUser.email : '' });
+  stampEditor(rec);
+  saveAll(); renderCapitalList(rec); renderCards(rec);
+  document.getElementById('capitalDesc').value = '';
+  document.getElementById('capitalAmount').value = '';
+  pulseButton(document.getElementById('addCapitalBtn'));
+  playTone('success');
+  showToast('บันทึกรายจ่ายเงินบ้านสำเร็จ ✓', 'success', { label:'เลิกทำ', onClick: ()=> restoreRecordSnapshot(snapDate, snapshot) });
+}
+async function deleteCapital(id){
+  const ok = await confirmAction('ยืนยันการลบ', dateAwareMessage('ต้องการลบรายการนี้ใช่หรือไม่?'));
+  if(!ok) return;
+  const snapshot = snapshotRecord(activeDate);
+  const snapDate = activeDate;
+  const rec = getRecord(activeDate);
+  rec.capital = (rec.capital||[]).filter(c => c.id !== id);
+  stampEditor(rec);
+  saveAll(); renderCapitalList(rec); renderCards(rec);
   playTone('delete');
   showToast('ลบรายการสำเร็จ ✓', 'error', { label:'เลิกทำ', onClick: ()=> restoreRecordSnapshot(snapDate, snapshot) });
 }
@@ -1360,6 +1419,11 @@ function startApp(){
   document.getElementById('expenseList').addEventListener('click', (e)=>{
     const id = e.target.getAttribute('data-del');
     if(id) deleteExpense(id);
+  });
+  document.getElementById('addCapitalBtn').addEventListener('click', addCapital);
+  document.getElementById('capitalList').addEventListener('click', (e)=>{
+    const id = e.target.getAttribute('data-delcap');
+    if(id) deleteCapital(id);
   });
 
   // tap to toggle zoom — stays zoomed until tapped again

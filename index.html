@@ -47,7 +47,7 @@
 <div class="modal-overlay" id="authOverlay">
   <div class="modal-box glass">
     <h3>🔐 เข้าสู่ระบบ</h3>
-    <p>เข้าสู่ระบบด้วยอีเมลล์และpassword</p>
+    <p>เข้าสู่ระบบด้วยอีเมลเพื่อซิงค์ข้อมูลออนไลน์ ใช้ได้ทุกเครื่อง</p>
     <input type="email" id="authEmail" class="auth-input" placeholder="อีเมล" autocomplete="email">
     <div class="auth-pass-wrap" id="authPassWrap">
       <input type="password" id="authPassword" class="auth-input" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)" autocomplete="current-password">
@@ -239,8 +239,14 @@
       <div class="hero-unit">บาท</div>
     </div>
     <div class="hero-divider"></div>
+    <div class="hero-stat">
+      <div class="hero-icon-label capital"><span class="hero-icon">🏠</span> เงินบ้าน (ต้นทุน)</div>
+      <div class="hero-number capital zoomable floaty" id="cardCapital">0</div>
+      <div class="hero-unit">บาท</div>
+    </div>
+    <div class="hero-rule"></div>
     <div class="hero-stat hero-stat-net">
-      <div class="hero-icon-label net"><span class="hero-icon">💳</span> สุทธิ</div>
+      <div class="hero-icon-label net"><span class="hero-icon">💳</span> กำไรสุทธิ</div>
       <div class="hero-number net zoomable floaty-net" id="cardNet">0</div>
       <div class="hero-unit">บาท</div>
     </div>
@@ -278,11 +284,39 @@
     </div>
   </section>
 
-  <!-- ===== FORM 2: รายจ่าย ===== -->
-  <section class="form-card glass" data-card="expense">
+  <!-- ===== FORM 2: ทุนลงของ, เงินบ้าน (ต้นทุน — หักออกจากกำไรโดยตรง ไม่รวมในรายจ่าย) ===== -->
+  <section class="form-card glass" data-card="capital">
     <div class="card-header">
       <div class="card-header-left">
         <span class="step-tab">2</span>
+        <h2>ทุนลงของ, เงินบ้าน</h2>
+        <span class="chip capital-chip" id="chipCapital">0 ฿</span>
+      </div>
+      <button class="chevron-btn" aria-label="ย่อ/ขยาย"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+    </div>
+    <div class="card-body">
+      <p class="sub-note">เป็นเงินบ้านลงของ จะเอาไปหักออกจากรายรับ เพื่อให้เห็นกำไร</p>
+      <div id="capitalList" class="expense-list"></div>
+      <div class="field-grid expense-input-row">
+        <div class="field-row">
+          <label>รายการ</label>
+          <input type="text" id="capitalDesc" placeholder="เช่น จ่ายตลาด,ซื้อซอส,ชูรส,ซื้อของร้านพี่ปุ๋">
+        </div>
+        <div class="field-row">
+          <label>จำนวนเงิน</label>
+          <input type="number" id="capitalAmount" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+      <button class="save-btn" id="addCapitalBtn">✓ บันทึกรายจ่ายเงินบ้าน</button>
+      <div class="total-line">รวมรายจ่ายเงินบ้าน: <span id="capitalTotal">฿0.00</span></div>
+    </div>
+  </section>
+
+  <!-- ===== FORM 3: รายจ่าย ===== -->
+  <section class="form-card glass" data-card="expense">
+    <div class="card-header">
+      <div class="card-header-left">
+        <span class="step-tab">3</span>
         <h2>รายจ่าย</h2>
         <span class="chip expense-chip" id="chipExpense">0 ฿</span>
       </div>
@@ -318,11 +352,11 @@
     </div>
   </section>
 
-  <!-- ===== FORM 3: เงินทอน (รวม เงินทอน + เงินทอนยกมา) ===== -->
+  <!-- ===== FORM 4: เงินทอน (รวม เงินทอน + เงินทอนยกมา) ===== -->
   <section class="form-card glass" data-card="change">
     <div class="card-header">
       <div class="card-header-left">
-        <span class="step-tab">3</span>
+        <span class="step-tab">4</span>
         <h2>เงินทอน</h2>
         <span class="chip change-chip" id="chipChange">0 ฿</span>
       </div>
