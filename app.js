@@ -19,6 +19,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+// keep the session saved on this device so refreshing never forces a re-login
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 let currentUser = null;
 let cloudSyncTimer = null;
 let appStarted = false;
@@ -133,8 +135,20 @@ function wireAuthUI(){
   const logoutBtn = document.getElementById('btnLogout');
   if(logoutBtn) logoutBtn.addEventListener('click', ()=>{ auth.signOut(); });
 
+  // eye icon: press to reveal/hide the typed password
+  const eyeBtn = document.getElementById('authEyeBtn');
+  const passWrap = document.getElementById('authPassWrap');
+  eyeBtn.addEventListener('click', ()=>{
+    const revealing = passInput.type === 'password';
+    passInput.type = revealing ? 'text' : 'password';
+    passWrap.classList.toggle('visible', revealing);
+  });
+
   auth.onAuthStateChanged(async (user)=>{
     currentUser = user;
+    // Firebase has now told us for certain whether we're logged in — safe to
+    // drop the splash and show either the app or the login form, with no flash.
+    document.getElementById('authSplash').classList.add('hidden');
     if(user){
       document.getElementById('authOverlay').classList.remove('open');
       await loadRecordsFromCloud();

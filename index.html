@@ -38,13 +38,24 @@
 
 <div id="toast-container"></div>
 
+<!-- ===== AUTH SPLASH (covers screen while Firebase checks login state) ===== -->
+<div class="auth-splash" id="authSplash">
+  <div class="auth-splash-mark">฿</div>
+</div>
+
 <!-- ===== AUTH OVERLAY (login / signup) ===== -->
-<div class="modal-overlay open" id="authOverlay">
+<div class="modal-overlay" id="authOverlay">
   <div class="modal-box glass">
     <h3>🔐 เข้าสู่ระบบ</h3>
     <p>เข้าสู่ระบบด้วยอีเมลเพื่อซิงค์ข้อมูลออนไลน์ ใช้ได้ทุกเครื่อง</p>
     <input type="email" id="authEmail" class="auth-input" placeholder="อีเมล" autocomplete="email">
-    <input type="password" id="authPassword" class="auth-input" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)" autocomplete="current-password">
+    <div class="auth-pass-wrap" id="authPassWrap">
+      <input type="password" id="authPassword" class="auth-input" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)" autocomplete="current-password">
+      <button type="button" class="auth-eye-btn" id="authEyeBtn" aria-label="แสดง/ซ่อนรหัสผ่าน" tabindex="-1">
+        <svg class="eye-open" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="eye-closed" viewBox="0 0 24 24"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
     <p id="authError" class="auth-error"></p>
     <div class="modal-actions modal-actions-col">
       <button class="modal-btn primary" id="authLoginBtn">เข้าสู่ระบบ</button>
