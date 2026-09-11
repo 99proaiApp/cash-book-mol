@@ -664,23 +664,25 @@ function populatePeriodYears(){
   else{ sel.value = String(new Date(activeDate+'T00:00:00').getFullYear()); }
 }
 
+const DAY_ABBR_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH_ABBR_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildPeriodRows(period, refDateStr, year){
   const rows = [];
   if(period === 'day'){
     const rec = records[refDateStr];
     const d = new Date(refDateStr + 'T00:00:00');
-    rows.push({ label: thaiDate(refDateStr), sub: DAY_NAMES_TH[d.getDay()], t: rec ? computeTotals(rec) : null, empty: !rec });
+    rows.push({ label: thaiDate(refDateStr), sub: DAY_NAMES_TH[d.getDay()], pdfLabel: refDateStr+' ('+DAY_ABBR_EN[d.getDay()]+')', t: rec ? computeTotals(rec) : null, empty: !rec });
   } else if(period === 'week'){
     getISOWeekDates(refDateStr).forEach(d=>{
       const key = localDateStr(d);
       const rec = records[key];
-      rows.push({ label: d.getDate()+'/'+(d.getMonth()+1), sub: shortDayName(d), t: rec ? computeTotals(rec) : null, empty: !rec });
+      rows.push({ label: d.getDate()+'/'+(d.getMonth()+1), sub: shortDayName(d), pdfLabel: key+' ('+DAY_ABBR_EN[d.getDay()]+')', t: rec ? computeTotals(rec) : null, empty: !rec });
     });
   } else if(period === 'month'){
     getMonthDates(refDateStr).forEach(d=>{
       const key = localDateStr(d);
       const rec = records[key];
-      rows.push({ label: d.getDate()+' '+MONTH_NAMES_TH[d.getMonth()].slice(0,3), sub: shortDayName(d), t: rec ? computeTotals(rec) : null, empty: !rec });
+      rows.push({ label: d.getDate()+' '+MONTH_NAMES_TH[d.getMonth()].slice(0,3), sub: shortDayName(d), pdfLabel: key+' ('+DAY_ABBR_EN[d.getDay()]+')', t: rec ? computeTotals(rec) : null, empty: !rec });
     });
   } else if(period === 'year'){
     for(let m=0;m<12;m++){
@@ -693,34 +695,41 @@ function buildPeriodRows(period, refDateStr, year){
           income += t.incomeReal; expense += t.totalExpense; capital += t.totalCapital; change += t.totalChange; net += t.net;
         }
       });
-      rows.push({ label: MONTH_NAMES_TH[m], sub: String(year+543), t: has ? {incomeReal:income, totalExpense:expense, totalCapital:capital, totalChange:change, net} : null, empty: !has });
+      rows.push({ label: MONTH_NAMES_TH[m], sub: String(year+543), pdfLabel: year+'-'+String(m+1).padStart(2,'0')+' ('+MONTH_ABBR_EN[m]+')', t: has ? {incomeReal:income, totalExpense:expense, totalCapital:capital, totalChange:change, net} : null, empty: !has });
     }
   }
   return rows;
 }
 
-function renderPeriodRow(r){
+function renderPeriodRow(r, period){
+  const dayTag = period !== 'year' ? ` <span class="period-row-day">${r.sub}</span>` : '';
   if(r.empty){
     return `<div class="period-row empty">
       <div class="period-row-info">
-        <span class="period-row-date">${r.label}</span>
-        <span class="period-row-sub">${r.sub}</span>
+        <span class="period-row-date">${r.label}${dayTag}</span>
       </div>
       <span class="period-row-status">หยุด</span>
     </div>`;
   }
   return `<div class="period-row">
     <div class="period-row-info">
-      <span class="period-row-date">${r.label}</span>
+      <span class="period-row-date">${r.label}${dayTag}</span>
       <span class="period-row-sub">รับ ${fmtNum(r.t.incomeReal)} · จ่าย ${fmtNum(r.t.totalExpense)} · เงินบ้าน ${fmtNum(r.t.totalCapital)}</span>
     </div>
     <span class="period-row-net" style="color:${r.t.net>=0?'var(--income)':'var(--expense)'}">${fmtNum(r.t.net)}</span>
   </div>`;
 }
 
+let currentPeriodView = 'day';
 function renderPeriodSummary(period){
+  currentPeriodView = period;
   const yearWrap = document.getElementById('periodYearWrap');
   yearWrap.hidden = period !== 'year';
+  const dayNav = document.getElementById('periodDayNav');
+  if(dayNav){
+    dayNav.hidden = period !== 'day';
+    if(period === 'day') document.getElementById('periodDayLabel').textContent = thaiDate(activeDate);
+  }
   let year = periodViewYear;
   if(period === 'year'){
     populatePeriodYears();
@@ -733,7 +742,7 @@ function renderPeriodSummary(period){
   rows.forEach(r=>{ if(r.t){ income+=r.t.incomeReal; expense+=r.t.totalExpense; capital+=r.t.totalCapital; change+=r.t.totalChange; net+=r.t.net; } });
 
   const unit = period === 'year' ? 'เดือน' : 'วัน';
-  const rowsHtml = rows.map(renderPeriodRow).join('');
+  const rowsHtml = rows.map(r=>renderPeriodRow(r, period)).join('');
   const listWrapHtml = period === 'day'
     ? `<div style="margin-bottom:8px;">${rowsHtml}</div>`
     : `<div class="period-list">${rowsHtml}</div>`;
@@ -1258,9 +1267,12 @@ function exportPeriodPdf(){
   const doc = new jsPDF();
   doc.setFontSize(15);
   doc.text('Period Report', 14, 18);
+  // NOTE: jsPDF's built-in font can't render Thai glyphs (they'd show as garbled boxes),
+  // so the exported PDF always uses plain dates + English day/month abbreviations (r.pdfLabel)
+  // instead of the Thai labels shown on-screen (r.label).
   const body = rows.map(r => r.empty
-    ? [r.label, 'Closed', '-', '-', '-', '-', '-']
-    : [r.label, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalCapital.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
+    ? [r.pdfLabel, 'Closed', '-', '-', '-', '-', '-']
+    : [r.pdfLabel, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalCapital.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
   );
   doc.autoTable({
     startY: 26,
@@ -1389,20 +1401,37 @@ function startApp(){
   document.getElementById('activeDate').addEventListener('change', (e)=>{
     activeDate = e.target.value || todayStr();
     renderForm(); refreshOpenCardHeight();
+    renderPeriodSummary(currentPeriodView); refreshOpenCardHeight();
   });
   document.getElementById('dateBack').addEventListener('click', ()=>{
     const d = new Date(activeDate + 'T00:00:00'); d.setDate(d.getDate()-1);
     activeDate = localDateStr(d);
     renderForm(); refreshOpenCardHeight();
+    renderPeriodSummary(currentPeriodView); refreshOpenCardHeight();
   });
   document.getElementById('dateFwd').addEventListener('click', ()=>{
     const d = new Date(activeDate + 'T00:00:00'); d.setDate(d.getDate()+1);
     activeDate = localDateStr(d);
     renderForm(); refreshOpenCardHeight();
+    renderPeriodSummary(currentPeriodView); refreshOpenCardHeight();
   });
   document.getElementById('dateToday').addEventListener('click', ()=>{
     activeDate = todayStr();
     renderForm(); refreshOpenCardHeight();
+    renderPeriodSummary(currentPeriodView); refreshOpenCardHeight();
+  });
+  // mini day-nav inside the Σ summary card — lets you browse days without scrolling back to the top date picker
+  document.getElementById('periodDayBack').addEventListener('click', ()=>{
+    const d = new Date(activeDate + 'T00:00:00'); d.setDate(d.getDate()-1);
+    activeDate = localDateStr(d);
+    renderForm(); refreshOpenCardHeight();
+    renderPeriodSummary('day'); refreshOpenCardHeight();
+  });
+  document.getElementById('periodDayFwd').addEventListener('click', ()=>{
+    const d = new Date(activeDate + 'T00:00:00'); d.setDate(d.getDate()+1);
+    activeDate = localDateStr(d);
+    renderForm(); refreshOpenCardHeight();
+    renderPeriodSummary('day'); refreshOpenCardHeight();
   });
 
   document.querySelectorAll('[data-save]').forEach(btn=>{

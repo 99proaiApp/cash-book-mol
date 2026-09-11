@@ -430,6 +430,14 @@ body{
   flex:1; padding:8px; border-radius:var(--radius-sm); border:1px solid rgba(47,111,237,0.18);
   background:var(--surface-1); font-family:inherit; font-size:12.5px; color:var(--ink);
 }
+.period-day-nav{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:11px;}
+.period-day-nav .chip-nav-btn{
+  width:26px;height:26px;border-radius:8px;border:1px solid rgba(47,111,237,0.15);
+  background:rgba(47,111,237,0.06); font-size:14px; cursor:pointer; color:var(--net); flex-shrink:0;
+}
+.period-day-nav .chip-nav-btn:active{transform:scale(0.92);}
+.period-day-label{font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:700; color:var(--ink); min-width:120px; text-align:center;}
+.period-row-day{font-weight:500; color:var(--ink-soft); font-size:10.5px;}
 .period-list{max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:8px; padding-right:2px;}
 .period-row{
   display:flex; justify-content:space-between; align-items:center;
