@@ -684,16 +684,16 @@ function buildPeriodRows(period, refDateStr, year){
     });
   } else if(period === 'year'){
     for(let m=0;m<12;m++){
-      let income=0, expense=0, change=0, net=0, has=false;
+      let income=0, expense=0, capital=0, change=0, net=0, has=false;
       sortedDates().forEach(key=>{
         const kd = new Date(key+'T00:00:00');
         if(kd.getFullYear() === year && kd.getMonth() === m){
           has = true;
           const t = computeTotals(records[key]);
-          income += t.incomeReal; expense += t.totalExpense; change += t.totalChange; net += t.net;
+          income += t.incomeReal; expense += t.totalExpense; capital += t.totalCapital; change += t.totalChange; net += t.net;
         }
       });
-      rows.push({ label: MONTH_NAMES_TH[m], sub: String(year+543), t: has ? {incomeReal:income, totalExpense:expense, totalChange:change, net} : null, empty: !has });
+      rows.push({ label: MONTH_NAMES_TH[m], sub: String(year+543), t: has ? {incomeReal:income, totalExpense:expense, totalCapital:capital, totalChange:change, net} : null, empty: !has });
     }
   }
   return rows;
@@ -712,7 +712,7 @@ function renderPeriodRow(r){
   return `<div class="period-row">
     <div class="period-row-info">
       <span class="period-row-date">${r.label}</span>
-      <span class="period-row-sub">รับ ${fmtNum(r.t.incomeReal)} · จ่าย ${fmtNum(r.t.totalExpense)}</span>
+      <span class="period-row-sub">รับ ${fmtNum(r.t.incomeReal)} · จ่าย ${fmtNum(r.t.totalExpense)} · เงินบ้าน ${fmtNum(r.t.totalCapital)}</span>
     </div>
     <span class="period-row-net" style="color:${r.t.net>=0?'var(--income)':'var(--expense)'}">${fmtNum(r.t.net)}</span>
   </div>`;
@@ -729,8 +729,8 @@ function renderPeriodSummary(period){
   }
 
   const rows = buildPeriodRows(period, activeDate, year);
-  let income=0, expense=0, change=0, net=0;
-  rows.forEach(r=>{ if(r.t){ income+=r.t.incomeReal; expense+=r.t.totalExpense; change+=r.t.totalChange; net+=r.t.net; } });
+  let income=0, expense=0, capital=0, change=0, net=0;
+  rows.forEach(r=>{ if(r.t){ income+=r.t.incomeReal; expense+=r.t.totalExpense; capital+=r.t.totalCapital; change+=r.t.totalChange; net+=r.t.net; } });
 
   const unit = period === 'year' ? 'เดือน' : 'วัน';
   const rowsHtml = rows.map(renderPeriodRow).join('');
@@ -743,12 +743,13 @@ function renderPeriodSummary(period){
     ${listWrapHtml}
     <div class="p-line p-income"><span>รายรับรวม (ไม่รวมเงินทอน)</span><span class="p-value">${fmtBaht(income)}</span></div>
     <div class="p-line p-expense"><span>รายจ่ายรวม</span><span class="p-value">${fmtBaht(expense)}</span></div>
+    <div class="p-line p-capital"><span>ทุนลงของ, เงินบ้านรวม (ต้นทุน)</span><span class="p-value">${fmtBaht(capital)}</span></div>
     <div class="p-line p-change"><span>เงินทอนรวม (ไม่นับเป็นรายรับ)</span><span class="p-value">${fmtBaht(change)}</span></div>
-    <div class="p-line p-net"><span>ยอดสุทธิรวม</span><span class="p-value">${fmtBaht(net)}</span></div>
+    <div class="p-line p-net"><span>กำไรสุทธิรวม</span><span class="p-value">${fmtBaht(net)}</span></div>
     <div class="p-meta">มีข้อมูล ${rows.filter(r=>!r.empty).length} จาก ${rows.length} ${unit}</div>
   `;
 
-  currentPeriodExport = { period, year, refDate: activeDate, rows, totals:{income, expense, change, net} };
+  currentPeriodExport = { period, year, refDate: activeDate, rows, totals:{income, expense, capital, change, net} };
 }
 
 /* ---------- search ---------- */
@@ -1238,12 +1239,12 @@ function periodExportFilenameBase(){
 function exportPeriodExcel(){
   if(!currentPeriodExport){ showToast('ยังไม่มีข้อมูลสรุปให้ดาวน์โหลด', 'error'); return; }
   const { rows, totals } = currentPeriodExport;
-  const header = ['วันที่ / เดือน','สถานะ','รายรับแท้จริง','รายจ่าย','เงินทอน','สุทธิ'];
+  const header = ['วันที่ / เดือน','สถานะ','รายรับแท้จริง','รายจ่าย','เงินบ้าน (ทุน)','เงินทอน','กำไรสุทธิ'];
   const body = rows.map(r => r.empty
-    ? [r.label, 'หยุด', '', '', '', '']
-    : [r.label, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
+    ? [r.label, 'หยุด', '', '', '', '', '']
+    : [r.label, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalCapital.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
   );
-  const sheetRows = [header, ...body, [], ['รวมทั้งหมด', '', totals.income.toFixed(2), totals.expense.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]];
+  const sheetRows = [header, ...body, [], ['รวมทั้งหมด', '', totals.income.toFixed(2), totals.expense.toFixed(2), totals.capital.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]];
   const ws = XLSX.utils.aoa_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
@@ -1258,14 +1259,14 @@ function exportPeriodPdf(){
   doc.setFontSize(15);
   doc.text('Period Report', 14, 18);
   const body = rows.map(r => r.empty
-    ? [r.label, 'Closed', '-', '-', '-', '-']
-    : [r.label, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
+    ? [r.label, 'Closed', '-', '-', '-', '-', '-']
+    : [r.label, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalCapital.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
   );
   doc.autoTable({
     startY: 26,
-    head: [['Date','Status','Real Income','Expense','Change','Net']],
+    head: [['Date','Status','Real Income','Expense','House cost','Change','Net profit']],
     body: body,
-    foot: [['Total','', totals.income.toFixed(2), totals.expense.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]],
+    foot: [['Total','', totals.income.toFixed(2), totals.expense.toFixed(2), totals.capital.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]],
     styles: { fontSize: 8 }
   });
   doc.save(periodExportFilenameBase() + '.pdf');

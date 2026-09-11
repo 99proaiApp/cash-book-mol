@@ -419,6 +419,7 @@ body{
 .p-value{font-weight:800; font-family:'IBM Plex Mono',monospace;}
 .p-line.p-income .p-value{color:var(--income);}
 .p-line.p-expense .p-value{color:var(--expense);}
+.p-line.p-capital .p-value{color:var(--carry);}
 .p-line.p-change .p-value{color:var(--change);}
 .p-line.p-net .p-value{color:var(--net);}
 .p-meta{font-size:10.5px;color:var(--ink-soft); padding-top:7px;}
