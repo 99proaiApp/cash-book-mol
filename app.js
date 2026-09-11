@@ -64,30 +64,40 @@ function saveAll(){
   queueCloudSync();
 }
 
-/* ---------- cloud sync (Firestore: one document per user) ---------- */
+/* ---------- cloud sync (Firestore: ONE shared document for everyone) ---------- */
+const SHARED_DOC_REF = () => db.collection('shared').doc('moneybook');
 function queueCloudSync(){
   if(!currentUser) return;
   if(cloudSyncTimer) clearTimeout(cloudSyncTimer);
   cloudSyncTimer = setTimeout(()=>{
-    db.collection('users').doc(currentUser.uid).set({ records })
+    SHARED_DOC_REF().set({ records, updatedBy: currentUser.email, updatedAt: new Date().toISOString() })
       .catch(e=> console.error('บันทึกข้อมูลขึ้น Firebase ไม่สำเร็จ:', e));
   }, 800);
 }
 async function loadRecordsFromCloud(){
   try{
-    const doc = await db.collection('users').doc(currentUser.uid).get();
+    const doc = await SHARED_DOC_REF().get();
     if(doc.exists && doc.data().records){
       records = doc.data().records;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
     } else {
-      // first login on this account — migrate whatever's in localStorage up to the cloud
+      // first time ever — migrate whatever's in this device's localStorage up to the shared cloud doc
       loadAll();
-      await db.collection('users').doc(currentUser.uid).set({ records });
+      await SHARED_DOC_REF().set({ records, updatedBy: currentUser.email, updatedAt: new Date().toISOString() });
     }
   }catch(e){
     console.error('โหลดข้อมูลจาก Firebase ไม่สำเร็จ ใช้ข้อมูลในเครื่องไปก่อน:', e);
     loadAll();
   }
+  // live sync: whenever anyone (any device/account) saves, everyone's screen updates automatically
+  SHARED_DOC_REF().onSnapshot((doc)=>{
+    if(!doc.exists) return;
+    const incoming = doc.data();
+    if(incoming.updatedBy === (currentUser && currentUser.email)) return; // this was our own write, already applied locally
+    records = incoming.records || {};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    if(appStarted){ renderForm(); populateHistoryYears(); }
+  });
 }
 
 /* ---------- auth UI ---------- */
@@ -97,6 +107,7 @@ function authErrorMessage(code){
     'auth/user-not-found':'ไม่พบบัญชีนี้ ลองสมัครสมาชิกใหม่',
     'auth/wrong-password':'รหัสผ่านไม่ถูกต้อง',
     'auth/invalid-credential':'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+    'auth/user-disabled':'บัญชีนี้ถูกระงับการใช้งาน ติดต่อเจ้าของระบบ',
     'auth/email-already-in-use':'อีเมลนี้ถูกใช้แล้ว ลองเข้าสู่ระบบแทน',
     'auth/weak-password':'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
     'auth/too-many-requests':'ลองผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่'
@@ -116,16 +127,6 @@ function wireAuthUI(){
     if(!email || !pass) return setError('กรุณากรอกอีเมลและรหัสผ่าน');
     loadingEl.hidden = false;
     auth.signInWithEmailAndPassword(email, pass)
-      .catch(err=> setError(authErrorMessage(err.code)))
-      .finally(()=> loadingEl.hidden = true);
-  });
-  document.getElementById('authSignupBtn').addEventListener('click', ()=>{
-    setError('');
-    const email = emailInput.value.trim(), pass = passInput.value;
-    if(!email || !pass) return setError('กรุณากรอกอีเมลและรหัสผ่าน');
-    if(pass.length < 6) return setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
-    loadingEl.hidden = false;
-    auth.createUserWithEmailAndPassword(email, pass)
       .catch(err=> setError(authErrorMessage(err.code)))
       .finally(()=> loadingEl.hidden = true);
   });
@@ -158,6 +159,13 @@ function sortedDates(){ return Object.keys(records).sort(); }
 function previousDate(date){
   const dates = sortedDates().filter(d => d < date);
   return dates.length ? dates[dates.length-1] : null;
+}
+// stamp who last touched a day's record + when, so shared/central data can show "who edited what"
+function stampEditor(rec){
+  if(currentUser){
+    rec.lastEditedBy = currentUser.email;
+    rec.lastEditedAt = new Date().toISOString();
+  }
 }
 
 /* ---------- computed totals ---------- */
@@ -432,6 +440,7 @@ async function saveIncome(){
   rec.income.note = num('incomeNote');
   rec.income.coin = num('incomeCoin');
   rec.income.app = num('incomeApp');
+  stampEditor(rec);
   saveAll(); renderCards(rec);
   pulseButton(document.querySelector('[data-save="income"]'));
   playTone('success');
@@ -445,6 +454,7 @@ async function saveChange(){
   const rec = getRecord(activeDate);
   rec.change.coin = num('changeCoin');
   rec.change.note = num('changeNote');
+  stampEditor(rec);
   saveAll(); renderCards(rec);
   pulseButton(document.querySelector('[data-save="change"]'));
   playTone('success');
@@ -469,7 +479,8 @@ async function addExpense(){
   const snapshot = snapshotRecord(activeDate);
   const snapDate = activeDate;
   const rec = getRecord(activeDate);
-  rec.expenses.push({ id: uid(), desc, category, amount });
+  rec.expenses.push({ id: uid(), desc, category, amount, by: currentUser ? currentUser.email : '' });
+  stampEditor(rec);
   saveAll(); renderExpenseList(rec); renderCards(rec);
   document.getElementById('expenseDesc').value = '';
   document.getElementById('expenseAmount').value = '';
@@ -487,6 +498,7 @@ async function deleteExpense(id){
   const snapDate = activeDate;
   const rec = getRecord(activeDate);
   rec.expenses = rec.expenses.filter(e => e.id !== id);
+  stampEditor(rec);
   saveAll(); renderExpenseList(rec); renderCards(rec);
   playTone('delete');
   showToast('ลบรายการสำเร็จ ✓', 'error', { label:'เลิกทำ', onClick: ()=> restoreRecordSnapshot(snapDate, snapshot) });
@@ -982,10 +994,14 @@ function renderHistoryList(){
     const t = computeTotals(rec);
     const div = document.createElement('div');
     div.className = 'history-item';
+    const editedLine = rec.lastEditedBy
+      ? `<span class="hist-editor">✏️ แก้ไขล่าสุดโดย ${rec.lastEditedBy}</span>`
+      : '';
     div.innerHTML = `
       <div class="hist-info">
         <span class="hist-date">${dateKey}</span>
         <span class="hist-sub">รับ ${fmtNum(t.totalIncome)} · จ่าย ${fmtNum(t.totalExpense)}</span>
+        ${editedLine}
       </div>
       <div class="hist-actions">
         <span class="hist-net" style="color:${t.net>=0?'#0EA968':'#E23744'}">${fmtNum(t.net)}</span>
@@ -998,17 +1014,19 @@ function renderHistoryList(){
 
 /* ---------- export: CSV ---------- */
 function buildCsvRows(){
-  const rows = [['date','income_note','income_coin','income_app','expense_desc','expense_category','expense_amount','change_coin','change_note']];
+  const rows = [['date','income_note','income_coin','income_app','expense_desc','expense_category','expense_amount','change_coin','change_note','edited_by']];
   sortedDates().forEach(dateKey=>{
     const rec = records[dateKey];
+    const editedBy = rec.lastEditedBy || '';
     if(rec.expenses.length === 0){
-      rows.push([dateKey, rec.income.note, rec.income.coin, rec.income.app, '', '', '', rec.change.coin, rec.change.note]);
+      rows.push([dateKey, rec.income.note, rec.income.coin, rec.income.app, '', '', '', rec.change.coin, rec.change.note, editedBy]);
     }else{
       rec.expenses.forEach((e, idx)=>{
         rows.push([
           dateKey, idx===0?rec.income.note:'', idx===0?rec.income.coin:'', idx===0?rec.income.app:'',
           e.desc, e.category, e.amount,
-          idx===0?rec.change.coin:'', idx===0?rec.change.note:''
+          idx===0?rec.change.coin:'', idx===0?rec.change.note:'',
+          idx===0?editedBy:(e.by||'')
         ]);
       });
     }
@@ -1103,6 +1121,13 @@ function exportPdfDay(){
       doc.text(Number(e.amount).toLocaleString('en-US', {minimumFractionDigits:2}), 180, y, {align:'right'});
       y += 7;
     });
+  }
+  if(rec.lastEditedBy){
+    y += 6;
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Last edited by: ${rec.lastEditedBy}`, 14, y);
+    doc.setTextColor(0);
   }
   doc.save(`daily-summary-${activeDate}.pdf`);
   showToast('ส่งออก PDF ใบสรุปรายวันสำเร็จ ✓', 'success');
