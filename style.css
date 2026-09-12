@@ -488,8 +488,11 @@ body{
 .modal-overlay.open{display:flex;}
 
 /* ===== AUTH SPLASH + LOGIN BACKGROUND (opaque — never shows the app behind it) ===== */
+/* black/gold theme — matches the piggy-bank app icon instead of the old blue-purple */
 .auth-splash, #authOverlay{
-  background:linear-gradient(160deg, #10224e 0%, #2F6FED 55%, #7c4dff 100%);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,196,77,0.16) 0%, transparent 45%),
+    linear-gradient(160deg, #0a0a0a 0%, #1a1408 55%, #2b2008 100%);
 }
 .auth-splash{
   position:fixed; inset:0; z-index:300;
@@ -498,7 +501,8 @@ body{
 }
 .auth-splash.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
 .auth-splash-mark{
-  font-size:52px; font-weight:800; color:#fff; line-height:1;
+  font-size:52px; font-weight:800; line-height:1;
+  color:#ffc44d;
   animation:auth-splash-pulse 1.4s ease-in-out infinite;
 }
 @keyframes auth-splash-pulse{
