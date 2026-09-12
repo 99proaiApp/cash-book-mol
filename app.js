@@ -1097,19 +1097,23 @@ function renderHistoryList(){
 
 /* ---------- export: CSV ---------- */
 function buildCsvRows(){
-  const rows = [['date','income_note','income_coin','income_app','expense_desc','expense_category','expense_amount','change_coin','change_note','edited_by']];
+  const rows = [['date','income_note','income_coin','income_app','item_type','item_desc','item_category','item_amount','change_coin','change_note','edited_by']];
   sortedDates().forEach(dateKey=>{
     const rec = records[dateKey];
     const editedBy = rec.lastEditedBy || '';
-    if(rec.expenses.length === 0){
-      rows.push([dateKey, rec.income.note, rec.income.coin, rec.income.app, '', '', '', rec.change.coin, rec.change.note, editedBy]);
+    const items = [
+      ...rec.expenses.map(e=>({ type:'รายจ่าย', desc:e.desc, category:e.category, amount:e.amount, by:e.by })),
+      ...(rec.capital||[]).map(c=>({ type:'ทุนลงของ', desc:c.desc, category:'', amount:c.amount, by:c.by })),
+    ];
+    if(items.length === 0){
+      rows.push([dateKey, rec.income.note, rec.income.coin, rec.income.app, '', '', '', '', rec.change.coin, rec.change.note, editedBy]);
     }else{
-      rec.expenses.forEach((e, idx)=>{
+      items.forEach((it, idx)=>{
         rows.push([
           dateKey, idx===0?rec.income.note:'', idx===0?rec.income.coin:'', idx===0?rec.income.app:'',
-          e.desc, e.category, e.amount,
+          it.type, it.desc, it.category, it.amount,
           idx===0?rec.change.coin:'', idx===0?rec.change.note:'',
-          idx===0?editedBy:(e.by||'')
+          idx===0?editedBy:(it.by||'')
         ]);
       });
     }
@@ -1159,7 +1163,16 @@ async function importJsonFile(file){
   const ok = await confirmAction('ยืนยันคืนค่าข้อมูล', `พบข้อมูล ${count} วันในไฟล์ ต้องการรวม/อัปเดตทับข้อมูลปัจจุบันหรือไม่?`);
   if(!ok) return;
   const fullSnapshot = snapshotAllRecords();
-  Object.keys(incoming).forEach(key=>{ records[key] = incoming[key]; });
+  Object.keys(incoming).forEach(key=>{
+    const rec = incoming[key];
+    // compatibility bridge: an older/other app of yours stores this same field as
+    // "homeExpenses" instead of "capital" — same shape ({id, desc, amount}), different
+    // name — so a backup from that app would otherwise show 0 for เงินบ้าน here.
+    if(rec && !rec.capital && Array.isArray(rec.homeExpenses)){
+      rec.capital = rec.homeExpenses;
+    }
+    records[key] = rec;
+  });
   saveAll();
   populateHistoryYears();
   renderForm();
@@ -1381,8 +1394,12 @@ function parseCsv(text){
 }
 async function importCsvFile(file){
   const text = await file.text();
-  const rows = parseCsv(text);
-  rows.shift();
+  const allRows = parseCsv(text);
+  const header = allRows[0] || [];
+  // old backups (before "ทุนลงของ, เงินบ้าน" existed) used a 9-column layout with no item_type
+  // column — detect which layout this file is so old backups still import correctly.
+  const hasItemType = header.some(h => (h||'').trim() === 'item_type');
+  const rows = allRows.slice(1);
   const affectedDates = new Set();
   let lastDate = null;
   rows.forEach(cols=>{
@@ -1397,7 +1414,7 @@ async function importCsvFile(file){
   const mode = await chooseImportMode(
     'นำเข้าข้อมูล CSV',
     `พบข้อมูล <b>${affectedDates.size} วัน</b> ในไฟล์<br><br>
-     <b>➕ รวมข้อมูล</b> — เก็บข้อมูลเดิมไว้ รายรับ/เงินทอนจะถูกบวกเพิ่มจากของเดิม รายจ่ายจะถูกเพิ่มต่อท้าย<br><br>
+     <b>➕ รวมข้อมูล</b> — เก็บข้อมูลเดิมไว้ รายรับ/เงินทอนจะถูกบวกเพิ่มจากของเดิม รายการ (รายจ่าย/ทุนลงของ) จะถูกเพิ่มต่อท้าย<br><br>
      <b>♻️ บันทึกทับ</b> — ลบข้อมูลเดิมของวันที่ตรงกันออกก่อน แล้วใส่ข้อมูลจาก CSV แทนทั้งหมด (ป้องกันรายการซ้ำเวลานำเข้าไฟล์เดิมซ้ำ)`
   );
   if(!mode) return;
@@ -1410,7 +1427,16 @@ async function importCsvFile(file){
 
   lastDate = null;
   rows.forEach(cols=>{
-    const [date, incNote, incCoin, incApp, expDesc, expCat, expAmt, chCoin, chNote] = cols;
+    let date, incNote, incCoin, incApp, itemType, itemDesc, itemCat, itemAmt, chCoin, chNote;
+    if(hasItemType){
+      [date, incNote, incCoin, incApp, itemType, itemDesc, itemCat, itemAmt, chCoin, chNote] = cols;
+    }else{
+      // legacy 9-column layout: [date, incNote, incCoin, incApp, expDesc, expCat, expAmt, chCoin, chNote]
+      // — everything in it was always a regular expense, there was no "ทุนลงของ" column at all.
+      let expDesc, expCat, expAmt;
+      [date, incNote, incCoin, incApp, expDesc, expCat, expAmt, chCoin, chNote] = cols;
+      itemType = 'รายจ่าย'; itemDesc = expDesc; itemCat = expCat; itemAmt = expAmt;
+    }
     const d = date && date.trim() ? date.trim() : lastDate;
     if(!d) return;
     lastDate = d;
@@ -1428,8 +1454,12 @@ async function importCsvFile(file){
       if(chCoin !== undefined && chCoin !== '') rec.change.coin = parseFloat(chCoin)||0;
       if(chNote !== undefined && chNote !== '') rec.change.note = parseFloat(chNote)||0;
     }
-    if(expDesc && expDesc.trim()){
-      rec.expenses.push({ id: uid(), desc: expDesc.trim(), category:(expCat||'ไม่ระบุ').trim(), amount: parseFloat(expAmt)||0 });
+    if(itemDesc && itemDesc.trim()){
+      if((itemType||'').trim() === 'ทุนลงของ'){
+        rec.capital.push({ id: uid(), desc: itemDesc.trim(), amount: parseFloat(itemAmt)||0 });
+      }else{
+        rec.expenses.push({ id: uid(), desc: itemDesc.trim(), category:(itemCat||'ไม่ระบุ').trim(), amount: parseFloat(itemAmt)||0 });
+      }
     }
   });
   saveAll();
