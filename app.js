@@ -133,7 +133,9 @@ function wireAuthUI(){
       .finally(()=> loadingEl.hidden = true);
   });
   const logoutBtn = document.getElementById('btnLogout');
-  if(logoutBtn) logoutBtn.addEventListener('click', ()=>{ auth.signOut(); });
+  if(logoutBtn) logoutBtn.addEventListener('click', ()=>{
+    auth.signOut().finally(()=>{ location.reload(); });
+  });
 
   // eye icon: press to reveal/hide the typed password
   const eyeBtn = document.getElementById('authEyeBtn');
