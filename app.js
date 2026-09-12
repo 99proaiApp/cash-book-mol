@@ -411,6 +411,8 @@ function pulseButton(el){
 function applyTheme(mode){
   if(mode === 'dark') document.documentElement.setAttribute('data-theme','dark');
   else document.documentElement.removeAttribute('data-theme');
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if(metaTheme) metaTheme.setAttribute('content', mode === 'dark' ? '#0a0f1c' : '#E1E7FF');
 }
 function initTheme(){
   const saved = localStorage.getItem('themeMode');
