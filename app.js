@@ -1245,9 +1245,60 @@ function periodExportFilenameBase(){
   if(period === 'year') return `รายงานปี-${year+543}`;
   return 'รายงาน';
 }
+
+/* dates covered by the currently displayed Σ period, for building itemized detail rows */
+function periodDateKeys(period, refDateStr, year){
+  if(period === 'day') return [refDateStr];
+  if(period === 'week') return getISOWeekDates(refDateStr).map(localDateStr);
+  if(period === 'month') return getMonthDates(refDateStr).map(localDateStr);
+  if(period === 'year') return sortedDates().filter(k => new Date(k+'T00:00:00').getFullYear() === year);
+  return [];
+}
+/* every expense + capital line item across those dates — [date, type, desc, category, amount] */
+function collectPeriodDetailRows(period, refDateStr, year){
+  const details = [];
+  periodDateKeys(period, refDateStr, year).sort().forEach(key=>{
+    const rec = records[key];
+    if(!rec) return;
+    (rec.expenses||[]).forEach(e=> details.push([key, 'รายจ่าย', e.desc, e.category||'-', Number(e.amount||0).toFixed(2)]));
+    (rec.capital||[]).forEach(c=> details.push([key, 'ทุนลงของ/เงินบ้าน', c.desc, '-', Number(c.amount||0).toFixed(2)]));
+  });
+  return details;
+}
+
+/* Thai font for jsPDF — its built-in fonts have no Thai glyphs, so item names (which are
+   Thai text the user typed) would show as garbled boxes without this. Fetched once and
+   cached; if the device is offline the fetch fails quietly and PDFs fall back to the
+   default font (Thai item names may not render, but numbers/dates still do). */
+let thaiPdfFontBase64 = null;
+let thaiPdfFontFailed = false;
+async function loadThaiPdfFont(){
+  if(thaiPdfFontBase64 || thaiPdfFontFailed) return thaiPdfFontBase64;
+  try{
+    const res = await fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sarabun/Sarabun-Regular.ttf');
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const chunk = 0x8000;
+    for(let i=0;i<bytes.length;i+=chunk){ binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk)); }
+    thaiPdfFontBase64 = btoa(binary);
+  }catch(err){
+    thaiPdfFontFailed = true;
+  }
+  return thaiPdfFontBase64;
+}
+async function applyThaiFont(doc){
+  const b64 = await loadThaiPdfFont();
+  if(!b64) return undefined;
+  doc.addFileToVFS('Sarabun-Regular.ttf', b64);
+  doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
+  doc.setFont('Sarabun');
+  return 'Sarabun';
+}
+
 function exportPeriodExcel(){
   if(!currentPeriodExport){ showToast('ยังไม่มีข้อมูลสรุปให้ดาวน์โหลด', 'error'); return; }
-  const { rows, totals } = currentPeriodExport;
+  const { period, refDate, year, rows, totals } = currentPeriodExport;
   const header = ['วันที่ / เดือน','สถานะ','รายรับแท้จริง','รายจ่าย','เงินบ้าน (ทุน)','เงินทอน','กำไรสุทธิ'];
   const body = rows.map(r => r.empty
     ? [r.label, 'หยุด', '', '', '', '', '']
@@ -1256,20 +1307,27 @@ function exportPeriodExcel(){
   const sheetRows = [header, ...body, [], ['รวมทั้งหมด', '', totals.income.toFixed(2), totals.expense.toFixed(2), totals.capital.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]];
   const ws = XLSX.utils.aoa_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
+  XLSX.utils.book_append_sheet(wb, ws, 'สรุปยอดรวม');
+
+  // second sheet: every line item (what was bought / paid) across the period, for audit detail
+  const detailRows = collectPeriodDetailRows(period, refDate, year);
+  const detailHeader = ['วันที่','ประเภท','รายการ','หมวดหมู่','จำนวนเงิน'];
+  const wsDetail = XLSX.utils.aoa_to_sheet([detailHeader, ...detailRows]);
+  XLSX.utils.book_append_sheet(wb, wsDetail, 'รายละเอียดรายการ');
+
   XLSX.writeFile(wb, periodExportFilenameBase() + '.xlsx');
   showToast('ดาวน์โหลดรายงาน Excel สำเร็จ ✓', 'success');
 }
-function exportPeriodPdf(){
+async function exportPeriodPdf(){
   if(!currentPeriodExport){ showToast('ยังไม่มีข้อมูลสรุปให้ดาวน์โหลด', 'error'); return; }
-  const { rows, totals } = currentPeriodExport;
+  const { period, refDate, rows, totals } = currentPeriodExport;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   doc.setFontSize(15);
   doc.text('Period Report', 14, 18);
   // NOTE: jsPDF's built-in font can't render Thai glyphs (they'd show as garbled boxes),
-  // so the exported PDF always uses plain dates + English day/month abbreviations (r.pdfLabel)
-  // instead of the Thai labels shown on-screen (r.label).
+  // so the summary table always uses plain dates + English day/month abbreviations (r.pdfLabel)
+  // instead of the Thai labels shown on-screen (r.label) — this part stays robust even offline.
   const body = rows.map(r => r.empty
     ? [r.pdfLabel, 'Closed', '-', '-', '-', '-', '-']
     : [r.pdfLabel, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalCapital.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
@@ -1281,6 +1339,27 @@ function exportPeriodPdf(){
     foot: [['Total','', totals.income.toFixed(2), totals.expense.toFixed(2), totals.capital.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]],
     styles: { fontSize: 8 }
   });
+
+  // day view only: itemize what was actually bought/paid that day (names are Thai, so this
+  // needs the embedded Thai font — best-effort, requires a network connection once to fetch it)
+  if(period === 'day'){
+    const rec = records[refDate];
+    const items = rec ? [
+      ...(rec.expenses||[]).map(e=>['รายจ่าย', e.desc, e.category||'-', Number(e.amount||0).toFixed(2)]),
+      ...(rec.capital||[]).map(c=>['ทุนลงของ/เงินบ้าน', c.desc, '-', Number(c.amount||0).toFixed(2)]),
+    ] : [];
+    if(items.length){
+      const thaiFont = await applyThaiFont(doc);
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['ประเภท','รายการ','หมวดหมู่','จำนวนเงิน']],
+        body: items,
+        styles: { fontSize: 9, ...(thaiFont ? {font: thaiFont} : {}) },
+        headStyles: thaiFont ? {font: thaiFont} : undefined
+      });
+    }
+  }
+
   doc.save(periodExportFilenameBase() + '.pdf');
   showToast('ดาวน์โหลดรายงาน PDF สำเร็จ ✓', 'success');
 }
