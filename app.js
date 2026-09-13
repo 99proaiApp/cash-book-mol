@@ -1611,10 +1611,24 @@ function startApp(){
     });
   });
 
+  // header "more" menu (option 2 layout: sound/history/search/chart/download collapsed here)
+  const headerMorePanel = document.getElementById('headerMorePanel');
+  document.getElementById('btnMore').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    headerMorePanel.classList.toggle('open');
+  });
+  headerMorePanel.addEventListener('click', ()=>{ headerMorePanel.classList.remove('open'); });
+  document.addEventListener('click', (e)=>{
+    if(!headerMorePanel.contains(e.target) && e.target.id !== 'btnMore'){
+      headerMorePanel.classList.remove('open');
+    }
+  });
+
   // download / export / import panel
   const downloadPanel = document.getElementById('downloadPanel');
   document.getElementById('btnDownload').addEventListener('click', (e)=>{
     e.stopPropagation();
+    headerMorePanel.classList.remove('open');
     downloadPanel.classList.toggle('open');
   });
   document.addEventListener('click', (e)=>{
