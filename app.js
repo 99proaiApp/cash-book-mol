@@ -64,9 +64,12 @@ function setFloatingDigits(el, text){
     const seed = (i * 37 + ch.charCodeAt(0) * 13) % 100;
     const floatDur = (2.6 + (seed % 9) * 0.18).toFixed(2);
     const floatDelay = ((seed % 25) * 0.1).toFixed(2);
+    const shineDelay = (i * 0.14).toFixed(2);
     // two comma-separated values map positionally to animation-name: shineSweep, floatDrift
+    // shineSweep's delay is staggered by character position (not randomized) so the light
+    // travels across the digits in sequence, left to right, instead of flashing in unison
     span.style.animationDuration = '4.8s, ' + floatDur + 's';
-    span.style.animationDelay = '0s, -' + floatDelay + 's';
+    span.style.animationDelay = '-' + shineDelay + 's, -' + floatDelay + 's';
     span.style.setProperty('--float-y', (3 + (seed % 5)) + 'px');
     span.style.setProperty('--float-x', ((seed % 7) - 3) + 'px');
     el.appendChild(span);

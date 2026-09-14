@@ -271,7 +271,7 @@ body{
   animation-name:shineSweep, floatDrift;
   animation-timing-function:ease-in-out, ease-in-out;
   animation-iteration-count:infinite, infinite;
-  animation-direction:alternate, alternate;
+  animation-direction:normal, alternate;
   animation-duration:4.8s, 3.2s;
   will-change:transform;
 }
