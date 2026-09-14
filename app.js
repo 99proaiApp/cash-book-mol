@@ -51,6 +51,27 @@ function fmtNum(n){
   return n.toLocaleString('th-TH', {minimumFractionDigits:0, maximumFractionDigits:0});
 }
 function num(id){ const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; }
+
+// wraps each character of a number string in its own span so every digit can float
+// independently — a stable per-character seed keeps each character's motion consistent
+// across re-renders instead of re-randomizing (and re-jumping) on every update.
+function setFloatingDigits(el, text){
+  el.innerHTML = '';
+  [...text].forEach((ch, i)=>{
+    const span = document.createElement('span');
+    span.className = 'float-char';
+    span.textContent = ch === ' ' ? '\u00A0' : ch;
+    const seed = (i * 37 + ch.charCodeAt(0) * 13) % 100;
+    const floatDur = (2.6 + (seed % 9) * 0.18).toFixed(2);
+    const floatDelay = ((seed % 25) * 0.1).toFixed(2);
+    // two comma-separated values map positionally to animation-name: shineSweep, floatDrift
+    span.style.animationDuration = '4.8s, ' + floatDur + 's';
+    span.style.animationDelay = '0s, -' + floatDelay + 's';
+    span.style.setProperty('--float-y', (3 + (seed % 5)) + 'px');
+    span.style.setProperty('--float-x', ((seed % 7) - 3) + 'px');
+    el.appendChild(span);
+  });
+}
 function uid(){ return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function thaiDate(dateStr){
   const d = new Date(dateStr + 'T00:00:00');
@@ -395,7 +416,7 @@ function renderCards(rec){
 
   const monthNow = monthlyTotals(activeDate);
   const d = new Date(activeDate + 'T00:00:00');
-  document.getElementById('cardMonthlyNet').textContent = fmtBaht(monthNow.net);
+  setFloatingDigits(document.getElementById('cardMonthlyNet'), fmtBaht(monthNow.net));
   document.getElementById('monthlyNetCaption').textContent =
     `รวมรายรับหักรายจ่าย เงินบ้าน และเงินทอน ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
 }
