@@ -98,10 +98,10 @@ body{
 
 /* ===== TOPBAR ===== */
 .topbar{
-  display:flex; justify-content:space-between; align-items:center;
-  gap:8px; padding:10px 14px; position:sticky; top:0; z-index:20;
+  display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
+  gap:6px 0;
+  padding:10px 14px; position:sticky; top:0; z-index:20;
   border-radius:0 0 var(--radius-lg) var(--radius-lg);
-  max-width:640px; margin:0 auto;
 }
 .brand{display:flex;align-items:center;gap:9px; min-width:0; flex:1 1 auto;}
 .brand-mark{
@@ -117,7 +117,7 @@ body{
 .brand-text h1:focus{background:rgba(47,111,237,0.08); border-radius:6px; padding:0 4px;}
 .brand-text p{font-size:9.5px; line-height:12px; height:12px; margin:1px 0 0; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
-.icon-actions{display:flex; gap:5px; flex-shrink:0;}
+.icon-actions{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:5px; flex-shrink:0; width:100%; max-width:fit-content;}
 .icon-btn{
   width:30px;height:30px; border-radius:10px;
   border:1px solid rgba(47,111,237,0.18); background:rgba(47,111,237,0.08);
@@ -127,6 +127,10 @@ body{
 .icon-btn:hover{background:rgba(47,111,237,0.16);}
 .icon-btn:active{transform:scale(0.9);}
 .icon-btn svg{width:14px;height:14px;stroke:var(--net);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+@media (max-width: 400px){
+  .icon-actions{ justify-content:flex-start; margin-left:41px; }
+}
 
 #btnTheme .icon-moon{display:none;}
 [data-theme="dark"] #btnTheme .icon-sun{display:none;}
@@ -138,8 +142,7 @@ body{
 
 /* ===== FLOAT PANEL ===== */
 .float-panel{
-  position:fixed; top:58px; right:max(10px, calc((100vw - 640px) / 2 + 10px));
-  border-radius:var(--radius-md);
+  position:fixed; top:58px; right:10px; border-radius:var(--radius-md);
   display:none; flex-direction:column; overflow:hidden; z-index:30;
   min-width:230px; max-height:80vh; overflow-y:auto;
 }
@@ -150,9 +153,6 @@ body{
   cursor:pointer; font-family:inherit;
 }
 .float-panel button:hover{background:rgba(47,111,237,0.1);}
-.more-row{ display:flex; align-items:center; gap:10px; width:100%; }
-.more-row svg{ width:16px; height:16px; stroke:var(--net); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
-.more-row span{ font-size:13px; }
 
 /* ===== OVERLAY PANELS ===== */
 .overlay-panel{
@@ -229,19 +229,46 @@ body{
 .day-name{font-size:9px;color:var(--ink-soft);}
 .today-pill{border:none; background:var(--net); color:#fff; font-size:10px; font-weight:700; padding:5px 10px; border-radius:999px; cursor:pointer; flex-shrink:0;}
 
-/* mini card (monthly net) — made bigger per request */
+/* mini card (monthly net) — centered as the standout focal figure, with premium sparkle + glow */
 .mini-card{display:flex; align-items:center; gap:12px; border-radius:var(--radius-md); padding:14px 16px; margin-bottom:9px;}
+.mini-card-premium{
+  position:relative; overflow:hidden;
+  flex-direction:column; align-items:center; text-align:center; gap:4px;
+  padding:20px 16px 18px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255,233,168,0.14) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(255,233,168,0.10) 0%, transparent 45%),
+    var(--glass-bg);
+}
+.spark{
+  position:absolute; width:3px; height:3px; border-radius:50%;
+  background:#FFE9A8; opacity:0; pointer-events:none;
+  animation:sparkTwinkle 3.6s ease-in-out infinite;
+}
+.spark-1{ top:18%; left:12%; animation-delay:0s; }
+.spark-2{ top:65%; left:22%; animation-delay:.9s; }
+.spark-3{ top:25%; left:85%; animation-delay:1.8s; }
+.spark-4{ top:72%; left:78%; animation-delay:2.6s; }
+@keyframes sparkTwinkle{
+  0%,100%{ opacity:0; transform:scale(0.6) translateY(0); }
+  50%{ opacity:1; transform:scale(1.3) translateY(-4px); }
+}
 .mini-icon{font-size:22px;}
 .mini-text{display:flex; flex-direction:column; gap:2px;}
+.mini-card-premium .mini-text{align-items:center;}
 .mini-label{font-size:11.5px; color:var(--ink-soft); font-weight:600;}
 .mini-value{
   font-size:28px; font-weight:800; font-family:'IBM Plex Mono',monospace;
   background:linear-gradient(100deg, #B8860B 0%, #B8860B 38%, #FFE9A8 50%, #B8860B 62%, #B8860B 100%);
   background-size:250% 100%;
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:#B8860B;
-  filter:drop-shadow(0 1px 6px rgba(184,134,11,0.25));
-  animation:shineSweep 4.8s ease-in-out infinite alternate;
+  animation:shineSweep 4.8s ease-in-out infinite alternate, glowPulse 2.4s ease-in-out infinite;
   display:inline-block;
+}
+.mini-card-premium .mini-value{ font-size:38px; margin:2px 0; }
+@keyframes glowPulse{
+  0%,100%{ filter:drop-shadow(0 1px 6px rgba(184,134,11,0.25)) drop-shadow(0 0 6px rgba(255,214,110,0.25)); }
+  50%{ filter:drop-shadow(0 1px 6px rgba(184,134,11,0.3)) drop-shadow(0 0 16px rgba(255,214,110,0.55)); }
 }
 .mini-caption{font-size:10px; color:var(--ink-soft);}
 @keyframes shineSweep{
@@ -488,8 +515,11 @@ body{
 .modal-overlay.open{display:flex;}
 
 /* ===== AUTH SPLASH + LOGIN BACKGROUND (opaque — never shows the app behind it) ===== */
+/* black/gold theme — matches the piggy-bank app icon instead of the old blue-purple */
 .auth-splash, #authOverlay{
-  background:linear-gradient(160deg, #10224e 0%, #2F6FED 55%, #7c4dff 100%);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,196,77,0.16) 0%, transparent 45%),
+    linear-gradient(160deg, #0a0a0a 0%, #1a1408 55%, #2b2008 100%);
 }
 .auth-splash{
   position:fixed; inset:0; z-index:300;
@@ -498,7 +528,8 @@ body{
 }
 .auth-splash.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
 .auth-splash-mark{
-  font-size:52px; font-weight:800; color:#fff; line-height:1;
+  font-size:52px; font-weight:800; line-height:1;
+  color:#ffc44d;
   animation:auth-splash-pulse 1.4s ease-in-out infinite;
 }
 @keyframes auth-splash-pulse{
