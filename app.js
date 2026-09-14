@@ -419,6 +419,8 @@ function renderCards(rec){
 
   const monthNow = monthlyTotals(activeDate);
   const d = new Date(activeDate + 'T00:00:00');
+  document.getElementById('miniCalMonth').textContent = MONTH_ABBR_EN[d.getMonth()].toUpperCase();
+  document.getElementById('miniCalDay').textContent = d.getDate();
   setFloatingDigits(document.getElementById('cardMonthlyNet'), fmtBaht(monthNow.net));
   document.getElementById('monthlyNetCaption').textContent =
     `รวมรายรับหักรายจ่าย เงินบ้าน และเงินทอน ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
