@@ -51,30 +51,6 @@ function fmtNum(n){
   return n.toLocaleString('th-TH', {minimumFractionDigits:0, maximumFractionDigits:0});
 }
 function num(id){ const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; }
-
-// wraps each character of a number string in its own span so every digit can float
-// independently — a stable per-character seed keeps each character's motion consistent
-// across re-renders instead of re-randomizing (and re-jumping) on every update.
-function setFloatingDigits(el, text){
-  el.innerHTML = '';
-  [...text].forEach((ch, i)=>{
-    const span = document.createElement('span');
-    span.className = 'float-char';
-    span.textContent = ch === ' ' ? '\u00A0' : ch;
-    const seed = (i * 37 + ch.charCodeAt(0) * 13) % 100;
-    const floatDur = (2.6 + (seed % 9) * 0.18).toFixed(2);
-    const floatDelay = ((seed % 25) * 0.1).toFixed(2);
-    const shineDelay = (i * 0.14).toFixed(2);
-    // two comma-separated values map positionally to animation-name: shineSweep, floatDrift
-    // shineSweep's delay is staggered by character position (not randomized) so the light
-    // travels across the digits in sequence, left to right, instead of flashing in unison
-    span.style.animationDuration = '4.8s, ' + floatDur + 's';
-    span.style.animationDelay = '-' + shineDelay + 's, -' + floatDelay + 's';
-    span.style.setProperty('--float-y', (3 + (seed % 5)) + 'px');
-    span.style.setProperty('--float-x', ((seed % 7) - 3) + 'px');
-    el.appendChild(span);
-  });
-}
 function uid(){ return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function thaiDate(dateStr){
   const d = new Date(dateStr + 'T00:00:00');
@@ -419,9 +395,7 @@ function renderCards(rec){
 
   const monthNow = monthlyTotals(activeDate);
   const d = new Date(activeDate + 'T00:00:00');
-  document.getElementById('miniCalMonth').textContent = MONTH_ABBR_EN[d.getMonth()].toUpperCase();
-  document.getElementById('miniCalDay').textContent = d.getDate();
-  setFloatingDigits(document.getElementById('cardMonthlyNet'), fmtBaht(monthNow.net));
+  document.getElementById('cardMonthlyNet').textContent = fmtBaht(monthNow.net);
   document.getElementById('monthlyNetCaption').textContent =
     `รวมรายรับหักรายจ่าย เงินบ้าน และเงินทอน ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
 }
@@ -466,7 +440,6 @@ function initSound(){
     localStorage.setItem('soundEnabled', soundEnabled ? '1' : '0');
     updateSoundIcon();
     if(soundEnabled) playTone('click');
-    document.getElementById('headerMorePanel').classList.remove('open');
   });
   // gentle tap feedback on the app's main interactive controls
   document.addEventListener('click', (e)=>{
@@ -1445,8 +1418,9 @@ async function importCsvFile(file){
   const mode = await chooseImportMode(
     'นำเข้าข้อมูล CSV',
     `พบข้อมูล <b>${affectedDates.size} วัน</b> ในไฟล์<br><br>
-     <b>➕ รวมข้อมูล</b> — เก็บข้อมูลเดิมไว้ รายรับ/เงินทอนจะถูกบวกเพิ่มจากของเดิม รายการ (รายจ่าย/ทุนลงของ) จะถูกเพิ่มต่อท้าย<br><br>
-     <b>♻️ บันทึกทับ</b> — ลบข้อมูลเดิมของวันที่ตรงกันออกก่อน แล้วใส่ข้อมูลจาก CSV แทนทั้งหมด (ป้องกันรายการซ้ำเวลานำเข้าไฟล์เดิมซ้ำ)`
+     ⚠️ <b>ถ้าไฟล์นี้เป็นไฟล์ที่เพิ่งดาวน์โหลดออกไปจากระบบ (หรือเป็นวันที่มีข้อมูลอยู่แล้ว) ต้องเลือก "บันทึกทับ" เท่านั้น</b> — ถ้าเลือก "รวมข้อมูล" ตัวเลขจะถูกบวกซ้ำเป็น 2 เท่า!<br><br>
+     <b>➕ รวมข้อมูล</b> — ใช้เมื่อไฟล์นี้มีข้อมูล<u>ใหม่</u>ที่ยังไม่เคยมีในระบบ (เช่น ข้อมูลจากเครื่อง/สาขาอื่น) ยอดรายรับ/เงินทอนจะถูก<b>บวกเพิ่ม</b>จากของเดิม รายการรายจ่าย/ทุนลงของจะถูก<b>เพิ่มต่อท้าย</b><br><br>
+     <b>♻️ บันทึกทับ</b> — ใช้เมื่อต้องการ<b>แทนที่ของเดิมทั้งหมด</b>ด้วยไฟล์นี้ (เช่น กู้คืนข้อมูล หรือแก้ไฟล์แล้วอัปใหม่) ระบบจะลบข้อมูลเดิมของวันที่ตรงกันออกก่อน แล้วใส่จากไฟล์แทน`
   );
   if(!mode) return;
 
@@ -1638,12 +1612,13 @@ function startApp(){
     });
   });
 
-  // header "more" menu — holds sound/history/chart (less-used actions)
+  // header "more" menu (option 2 layout: sound/history/search/chart/download collapsed here)
   const headerMorePanel = document.getElementById('headerMorePanel');
   document.getElementById('btnMore').addEventListener('click', (e)=>{
     e.stopPropagation();
     headerMorePanel.classList.toggle('open');
   });
+  headerMorePanel.addEventListener('click', ()=>{ headerMorePanel.classList.remove('open'); });
   document.addEventListener('click', (e)=>{
     if(!headerMorePanel.contains(e.target) && e.target.id !== 'btnMore'){
       headerMorePanel.classList.remove('open');
@@ -1688,7 +1663,6 @@ function startApp(){
   // chart panel
   document.getElementById('btnChart').addEventListener('click', ()=>{
     document.getElementById('chartPanel').classList.add('open');
-    document.getElementById('headerMorePanel').classList.remove('open');
     setTimeout(renderChart, 30);
   });
 
@@ -1697,7 +1671,6 @@ function startApp(){
     populateHistoryYears();
     renderHistoryList();
     document.getElementById('historyPanel').classList.add('open');
-    document.getElementById('headerMorePanel').classList.remove('open');
   });
   document.getElementById('historyYear').addEventListener('change', renderHistoryList);
   document.getElementById('historyMonth').addEventListener('change', renderHistoryList);

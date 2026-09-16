@@ -136,17 +136,27 @@
 </header>
 
 <!-- ===== DOWNLOAD / IMPORT / BACKUP MENU ===== -->
-<div class="float-panel glass" id="downloadPanel">
-  <div class="dd-section-label">📤 Export Data — ส่งออกข้อมูล</div>
-  <button id="exportExcel">📊 Excel (.xlsx)</button>
-  <button id="exportCsv">📄 CSV</button>
-  <button id="exportPdfDay">🧾 PDF ใบสรุปรายวัน</button>
-  <button id="exportPdfPeriod">📑 PDF รายงานสรุปช่วงเวลา</button>
-  <div class="dd-section-label">📥 Import Data — นำเข้าข้อมูล</div>
-  <button id="importCsvBtn">นำเข้า CSV (รวมข้อมูลอัตโนมัติ)</button>
-  <div class="dd-section-label">🗂️ Backup / Restore — สำรอง/คืนค่า</div>
-  <button id="exportJson">สำรองข้อมูลทั้งหมด (.json)</button>
-  <button id="importJsonBtn">คืนค่าข้อมูลจากไฟล์ (.json)</button>
+<div class="float-panel glass dl-panel" id="downloadPanel">
+  <div class="dl-group">
+    <div class="dl-group-title">📤 ส่งออกข้อมูล</div>
+    <div class="dl-grid">
+      <button id="exportExcel" class="dl-btn"><span class="dl-emoji">📊</span>Excel</button>
+      <button id="exportCsv" class="dl-btn"><span class="dl-emoji">📄</span>CSV</button>
+    </div>
+    <button id="exportPdfDay" class="dl-btn dl-btn-wide"><span class="dl-emoji">🧾</span>PDF ใบสรุปรายวัน</button>
+    <button id="exportPdfPeriod" class="dl-btn dl-btn-wide"><span class="dl-emoji">📑</span>PDF รายงานสรุปช่วงเวลา</button>
+  </div>
+  <div class="dl-divider"></div>
+  <div class="dl-group">
+    <div class="dl-group-title">📥 นำเข้าข้อมูล</div>
+    <button id="importCsvBtn" class="dl-btn dl-btn-wide"><span class="dl-emoji">📄</span>นำเข้าไฟล์ CSV</button>
+  </div>
+  <div class="dl-divider"></div>
+  <div class="dl-group">
+    <div class="dl-group-title">🗂️ สำรอง / คืนค่าทั้งหมด</div>
+    <button id="exportJson" class="dl-btn dl-btn-wide"><span class="dl-emoji">💾</span>สำรองข้อมูล (.json)</button>
+    <button id="importJsonBtn" class="dl-btn dl-btn-wide"><span class="dl-emoji">♻️</span>คืนค่าจากไฟล์ (.json)</button>
+  </div>
   <input type="file" id="importCsvInput" accept=".csv" hidden>
   <input type="file" id="importJsonInput" accept=".json" hidden>
 </div>
