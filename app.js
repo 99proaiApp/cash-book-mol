@@ -466,6 +466,7 @@ function initSound(){
     localStorage.setItem('soundEnabled', soundEnabled ? '1' : '0');
     updateSoundIcon();
     if(soundEnabled) playTone('click');
+    document.getElementById('headerMorePanel').classList.remove('open');
   });
   // gentle tap feedback on the app's main interactive controls
   document.addEventListener('click', (e)=>{
@@ -1637,13 +1638,12 @@ function startApp(){
     });
   });
 
-  // header "more" menu (option 2 layout: sound/history/search/chart/download collapsed here)
+  // header "more" menu — holds sound/history/chart (less-used actions)
   const headerMorePanel = document.getElementById('headerMorePanel');
   document.getElementById('btnMore').addEventListener('click', (e)=>{
     e.stopPropagation();
     headerMorePanel.classList.toggle('open');
   });
-  headerMorePanel.addEventListener('click', ()=>{ headerMorePanel.classList.remove('open'); });
   document.addEventListener('click', (e)=>{
     if(!headerMorePanel.contains(e.target) && e.target.id !== 'btnMore'){
       headerMorePanel.classList.remove('open');
@@ -1688,6 +1688,7 @@ function startApp(){
   // chart panel
   document.getElementById('btnChart').addEventListener('click', ()=>{
     document.getElementById('chartPanel').classList.add('open');
+    document.getElementById('headerMorePanel').classList.remove('open');
     setTimeout(renderChart, 30);
   });
 
@@ -1696,6 +1697,7 @@ function startApp(){
     populateHistoryYears();
     renderHistoryList();
     document.getElementById('historyPanel').classList.add('open');
+    document.getElementById('headerMorePanel').classList.remove('open');
   });
   document.getElementById('historyYear').addEventListener('change', renderHistoryList);
   document.getElementById('historyMonth').addEventListener('change', renderHistoryList);
