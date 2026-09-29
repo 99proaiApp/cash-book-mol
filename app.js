@@ -220,6 +220,11 @@ function computeTotals(rec){
   const net = incomeReal - totalExpense - totalCapital;
   return { totalIncome, totalExpense, totalCapital, totalChange, incomeReal, net };
 }
+// a day with a saved record but literally zero movement in every field counts the same as
+// "หยุด" (closed/no record) for display and reporting purposes — no real business happened
+function isZeroActivity(t){
+  return t.totalIncome === 0 && t.totalExpense === 0 && t.totalCapital === 0 && t.totalChange === 0;
+}
 // สรุปยอดของเดือน (รายรับแท้จริง / รายจ่าย / สุทธิ) รวมทุกวันในเดือนนั้น
 function monthlyTotals(dateStr){
   const d = new Date(dateStr + 'T00:00:00');
@@ -701,19 +706,25 @@ function buildPeriodRows(period, refDateStr, year){
   const rows = [];
   if(period === 'day'){
     const rec = records[refDateStr];
+    const t = rec ? computeTotals(rec) : null;
+    const empty = !t || isZeroActivity(t);
     const d = new Date(refDateStr + 'T00:00:00');
-    rows.push({ label: thaiDate(refDateStr), sub: DAY_NAMES_TH[d.getDay()], pdfLabel: refDateStr+' ('+DAY_ABBR_EN[d.getDay()]+')', t: rec ? computeTotals(rec) : null, empty: !rec });
+    rows.push({ label: thaiDate(refDateStr), sub: DAY_NAMES_TH[d.getDay()], pdfLabel: refDateStr+' ('+DAY_ABBR_EN[d.getDay()]+')', t: empty ? null : t, empty });
   } else if(period === 'week'){
     getISOWeekDates(refDateStr).forEach(d=>{
       const key = localDateStr(d);
       const rec = records[key];
-      rows.push({ label: d.getDate()+'/'+(d.getMonth()+1), sub: shortDayName(d), pdfLabel: key+' ('+DAY_ABBR_EN[d.getDay()]+')', t: rec ? computeTotals(rec) : null, empty: !rec });
+      const t = rec ? computeTotals(rec) : null;
+      const empty = !t || isZeroActivity(t);
+      rows.push({ label: d.getDate()+'/'+(d.getMonth()+1), sub: shortDayName(d), pdfLabel: key+' ('+DAY_ABBR_EN[d.getDay()]+')', t: empty ? null : t, empty });
     });
   } else if(period === 'month'){
     getMonthDates(refDateStr).forEach(d=>{
       const key = localDateStr(d);
       const rec = records[key];
-      rows.push({ label: d.getDate()+' '+MONTH_NAMES_TH[d.getMonth()].slice(0,3), sub: shortDayName(d), pdfLabel: key+' ('+DAY_ABBR_EN[d.getDay()]+')', t: rec ? computeTotals(rec) : null, empty: !rec });
+      const t = rec ? computeTotals(rec) : null;
+      const empty = !t || isZeroActivity(t);
+      rows.push({ label: d.getDate()+' '+MONTH_NAMES_TH[d.getMonth()].slice(0,3), sub: shortDayName(d), pdfLabel: key+' ('+DAY_ABBR_EN[d.getDay()]+')', t: empty ? null : t, empty });
     });
   } else if(period === 'year'){
     for(let m=0;m<12;m++){
@@ -721,8 +732,9 @@ function buildPeriodRows(period, refDateStr, year){
       sortedDates().forEach(key=>{
         const kd = new Date(key+'T00:00:00');
         if(kd.getFullYear() === year && kd.getMonth() === m){
-          has = true;
           const t = computeTotals(records[key]);
+          if(isZeroActivity(t)) return; // a saved-but-empty day doesn't count as "worked" for the month either
+          has = true;
           income += t.incomeReal; expense += t.totalExpense; capital += t.totalCapital; change += t.totalChange; net += t.net;
         }
       });
@@ -786,7 +798,7 @@ function renderPeriodSummary(period){
     <div class="p-line p-capital"><span>ทุนลงของ, เงินบ้านรวม (ต้นทุน)</span><span class="p-value">${fmtBaht(capital)}</span></div>
     <div class="p-line p-change"><span>เงินทอนรวม (ไม่นับเป็นรายรับ)</span><span class="p-value">${fmtBaht(change)}</span></div>
     <div class="p-line p-net"><span>กำไรสุทธิรวม</span><span class="p-value">${fmtBaht(net)}</span></div>
-    <div class="p-meta">มีข้อมูล ${rows.filter(r=>!r.empty).length} จาก ${rows.length} ${unit}</div>
+    <div class="p-meta">ทำงาน ${rows.filter(r=>!r.empty).length} ${unit} · หยุด ${rows.filter(r=>r.empty).length} ${unit} (จากทั้งหมด ${rows.length} ${unit})</div>
   `;
 
   currentPeriodExport = { period, year, refDate: activeDate, rows, totals:{income, expense, capital, change, net} };
@@ -1343,12 +1355,20 @@ async function applyThaiFont(doc){
 function exportPeriodExcel(){
   if(!currentPeriodExport){ showToast('ยังไม่มีข้อมูลสรุปให้ดาวน์โหลด', 'error'); return; }
   const { period, refDate, year, rows, totals } = currentPeriodExport;
+  const unit = period === 'year' ? 'เดือน' : 'วัน';
+  const workedCount = rows.filter(r=>!r.empty).length;
+  const closedCount = rows.filter(r=>r.empty).length;
   const header = ['วันที่ / เดือน','สถานะ','รายรับแท้จริง','รายจ่าย','เงินบ้าน (ทุน)','เงินทอน','กำไรสุทธิ'];
   const body = rows.map(r => r.empty
     ? [r.label, 'หยุด', '', '', '', '', '']
     : [r.label, '', r.t.incomeReal.toFixed(2), r.t.totalExpense.toFixed(2), r.t.totalCapital.toFixed(2), r.t.totalChange.toFixed(2), r.t.net.toFixed(2)]
   );
-  const sheetRows = [header, ...body, [], ['รวมทั้งหมด', '', totals.income.toFixed(2), totals.expense.toFixed(2), totals.capital.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]];
+  const sheetRows = [
+    header, ...body, [],
+    ['รวมทั้งหมด', '', totals.income.toFixed(2), totals.expense.toFixed(2), totals.capital.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)],
+    [],
+    [`ทำงาน ${workedCount} ${unit}`, `หยุด ${closedCount} ${unit}`, `จากทั้งหมด ${rows.length} ${unit}`]
+  ];
   const ws = XLSX.utils.aoa_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'สรุปยอดรวม');
@@ -1381,8 +1401,31 @@ async function exportPeriodPdf(){
     head: [['Date','Status','Real Income','Expense','House cost','Change','Net profit']],
     body: body,
     foot: [['Total','', totals.income.toFixed(2), totals.expense.toFixed(2), totals.capital.toFixed(2), totals.change.toFixed(2), totals.net.toFixed(2)]],
-    styles: { fontSize: 8 }
+    styles: { fontSize: 8 },
+    didParseCell: (data) => {
+      if(data.section !== 'body') return;
+      const row = rows[data.row.index];
+      if(!row) return;
+      if(data.column.index === 1 && row.empty){
+        data.cell.styles.textColor = [217, 45, 32];   // red — closed/no-data day
+      }
+      if(data.column.index === 6 && !row.empty){
+        data.cell.styles.textColor = row.t.net >= 0 ? [14, 169, 104] : [217, 45, 32]; // green / red
+      }
+    }
   });
+
+  let afterTableY = doc.lastAutoTable.finalY + 10;
+  if(period !== 'day'){
+    const unit = period === 'year' ? 'month(s)' : 'day(s)';
+    const workedCount = rows.filter(r=>!r.empty).length;
+    const closedCount = rows.filter(r=>r.empty).length;
+    doc.setFontSize(9);
+    doc.setTextColor(60);
+    doc.text(`Worked: ${workedCount} ${unit}   Closed: ${closedCount} ${unit}   (Total: ${rows.length} ${unit})`, 14, doc.lastAutoTable.finalY + 8);
+    doc.setTextColor(0);
+    afterTableY = doc.lastAutoTable.finalY + 16;
+  }
 
   // day view only: itemize what was actually bought/paid that day (names are Thai, so this
   // needs the embedded Thai font — best-effort, requires a network connection once to fetch it)
@@ -1395,7 +1438,7 @@ async function exportPeriodPdf(){
     if(items.length){
       const thaiFont = await applyThaiFont(doc);
       doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 10,
+        startY: afterTableY,
         head: [['ประเภท','รายการ','หมวดหมู่','จำนวนเงิน']],
         body: items,
         styles: { fontSize: 9, ...(thaiFont ? {font: thaiFont} : {}) },
