@@ -252,9 +252,16 @@ body{
   flex-direction:column; align-items:center; text-align:center; gap:4px;
   padding:20px 16px 18px;
   background:
-    radial-gradient(circle at 15% 20%, rgba(255,233,168,0.14) 0%, transparent 45%),
-    radial-gradient(circle at 85% 80%, rgba(255,233,168,0.10) 0%, transparent 45%),
+    radial-gradient(circle at 12% 15%, rgba(255,214,140,0.32) 0%, transparent 42%),
+    radial-gradient(circle at 88% 12%, rgba(199,182,255,0.26) 0%, transparent 48%),
+    radial-gradient(circle at 20% 92%, rgba(255,196,196,0.18) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(255,233,168,0.22) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(255,247,230,0.5) 0%, rgba(240,238,255,0.35) 100%),
     var(--glass-bg);
+}
+/* night mode: keep it plain and dark, skip the decorative light wash entirely */
+[data-theme="dark"] .mini-card-premium{
+  background: var(--glass-bg);
 }
 .spark{
   position:absolute; width:3px; height:3px; border-radius:50%;
