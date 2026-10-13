@@ -342,6 +342,34 @@ body{
 
 /* hero stats card */
 .hero-card{border-radius:var(--radius-lg); padding:16px 8px 12px; margin-bottom:9px; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); align-items:start;}
+
+/* raised gold frame for the main numbers card:
+   a metallic gold ring (masked pseudo-element) + soft highlight on top edge and a warm drop shadow
+   underneath so the whole card looks lifted off the page */
+.hero-card{
+  border-color:transparent;
+  box-shadow:
+    0 10px 22px -8px rgba(184,134,11,0.40),
+    0 2px 5px rgba(184,134,11,0.22),
+    inset 0 1px 1px rgba(255,255,255,0.9),
+    inset 0 -2px 4px rgba(184,134,11,0.14);
+}
+.hero-card::before{
+  content:""; position:absolute; inset:-1px; border-radius:inherit; padding:2.5px;
+  pointer-events:none; z-index:2;
+  background:linear-gradient(135deg, #FFF6CC 0%, #F2C94C 18%, #B8860B 42%, #F8DD7A 60%, #C9971C 82%, #8A6508 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+}
+[data-theme="dark"] .hero-card{
+  box-shadow:
+    0 12px 24px -10px rgba(0,0,0,0.65),
+    0 0 14px rgba(242,201,76,0.10),
+    inset 0 1px 1px rgba(255,236,170,0.20),
+    inset 0 -2px 4px rgba(0,0,0,0.30);
+}
 .hero-stat{min-width:0; text-align:center; padding:0 2px; overflow:hidden;}
 .hero-stat.hero-stat-net{grid-column:span 2;}
 .hs-expense, .hs-capital{border-left:1px solid rgba(47,111,237,0.15);}
