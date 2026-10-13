@@ -408,6 +408,10 @@ function escapeHtml(s){ const d = document.createElement('div'); d.textContent =
 function renderCards(rec){
   const t = computeTotals(rec);
   document.getElementById('cardIncomeReal').textContent = fmtNum(t.incomeReal);
+  document.getElementById('cardIncomeTotal').textContent = fmtNum(t.incomeReal + t.totalExpense);
+  document.getElementById('noteIncomeTotal').textContent = `รายรับแท้จริง ${fmtNum(t.incomeReal)} + รายจ่าย ${fmtNum(t.totalExpense)}`;
+  document.getElementById('noteIncomeReal').textContent = `รายรับ ${fmtNum(t.totalIncome)} − เงินทอน ${fmtNum(t.totalChange)}`;
+  document.getElementById('noteNet').textContent = `${fmtNum(t.incomeReal)} − ${fmtNum(t.totalExpense)} − ${fmtNum(t.totalCapital)}`;
   document.getElementById('cardExpense').textContent = fmtNum(t.totalExpense);
   document.getElementById('cardCapital').textContent = fmtNum(t.totalCapital);
   document.getElementById('cardNet').textContent = fmtNum(t.net);
@@ -614,6 +618,20 @@ async function deleteCapital(id){
 }
 
 /* ---------- accordion ---------- */
+// monthly net card: starts collapsed, tap the title row to show/hide the amount
+function initMiniNetCard(){
+  const card = document.getElementById('miniNetCard');
+  const head = document.getElementById('miniNetHead');
+  if(!card || !head) return;
+  const toggle = ()=>{
+    const open = card.classList.toggle('open');
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  head.addEventListener('click', toggle);
+  head.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
+  });
+}
 function initAccordion(){
   const cards = document.querySelectorAll('.form-card');
   cards.forEach((card, idx)=>{
@@ -1572,6 +1590,7 @@ function startApp(){
   initTheme();
   initSound();
   initAccordion();
+  initMiniNetCard();
   renderForm();
   populateHistoryYears();
 

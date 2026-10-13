@@ -226,46 +226,58 @@
   </section>
 
   <!-- ===== MONTHLY NET MINI CARD ===== -->
-  <section class="mini-card glass mini-card-premium">
+  <section class="mini-card glass mini-card-premium" id="miniNetCard">
     <span class="spark spark-1"></span>
     <span class="spark spark-2"></span>
     <span class="spark spark-3"></span>
     <span class="spark spark-4"></span>
-    <div class="mini-cal-icon" id="miniCalIcon">
-      <span class="mini-cal-month" id="miniCalMonth">JAN</span>
-      <span class="mini-cal-day" id="miniCalDay">1</span>
-    </div>
-    <div class="mini-text">
+    <div class="mini-head" id="miniNetHead" role="button" tabindex="0" aria-expanded="false" aria-controls="miniNetBody">
       <span class="mini-label">รายได้สุทธิ (เดือนนี้)</span>
-      <span class="mini-value" id="cardMonthlyNet">฿0.00</span>
-      <span class="mini-caption" id="monthlyNetCaption">รวมรายรับหักรายจ่ายและเงินทอน ของเดือนสิงหาคม 2569</span>
+      <button class="chevron-btn" type="button" aria-label="ย่อ/ขยาย" tabindex="-1"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+    </div>
+    <div class="mini-body" id="miniNetBody">
+      <div class="mini-cal-icon" id="miniCalIcon">
+        <span class="mini-cal-month" id="miniCalMonth">JAN</span>
+        <span class="mini-cal-day" id="miniCalDay">1</span>
+      </div>
+      <div class="mini-text">
+        <span class="mini-value" id="cardMonthlyNet">฿0.00</span>
+        <span class="mini-caption" id="monthlyNetCaption">รวมรายรับหักรายจ่ายและเงินทอน ของเดือนสิงหาคม 2569</span>
+      </div>
     </div>
   </section>
 
   <!-- ===== HERO STATS CARD ===== -->
   <section class="hero-card glass">
-    <div class="hero-stat">
-      <div class="hero-icon-label income"><span class="hero-icon">↗</span> รายรับแท้จริง</div>
-      <div class="hero-number income zoomable floaty" id="cardIncomeReal">0</div>
+    <div class="hero-stat hs-total">
+      <div class="hero-icon-label income"><span class="hero-icon">Σ</span> รายรับรวม</div>
+      <div class="hero-number income zoomable floaty" id="cardIncomeTotal">0</div>
       <div class="hero-unit">บาท</div>
+      <div class="hero-note" id="noteIncomeTotal">รายรับแท้จริง + รายจ่าย</div>
     </div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat">
+    <div class="hero-stat hs-expense">
       <div class="hero-icon-label expense"><span class="hero-icon">↘</span> รายจ่าย</div>
       <div class="hero-number expense zoomable floaty" id="cardExpense">0</div>
       <div class="hero-unit">บาท</div>
+      <div class="hero-note">รวมจากการ์ด 3</div>
     </div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat">
+    <div class="hero-stat hs-capital">
       <div class="hero-icon-label capital"><span class="hero-icon">🏠</span> เงินบ้าน (ต้นทุน)</div>
       <div class="hero-number capital zoomable floaty" id="cardCapital">0</div>
       <div class="hero-unit">บาท</div>
+      <div class="hero-note">รวมจากการ์ด 2</div>
     </div>
-    <div class="hero-rule"></div>
-    <div class="hero-stat hero-stat-net">
+    <div class="hero-stat hs-real">
+      <div class="hero-icon-label income"><span class="hero-icon">↗</span> รายรับแท้จริง</div>
+      <div class="hero-number income zoomable floaty" id="cardIncomeReal">0</div>
+      <div class="hero-unit">บาท</div>
+      <div class="hero-note" id="noteIncomeReal">รายรับ − เงินทอน</div>
+    </div>
+    <div class="hero-stat hero-stat-net hs-net">
       <div class="hero-icon-label net"><span class="hero-icon">💳</span> กำไรสุทธิ</div>
       <div class="hero-number net zoomable floaty-net" id="cardNet">0</div>
       <div class="hero-unit">บาท</div>
+      <div class="hero-note" id="noteNet">รายรับแท้จริง − รายจ่าย − เงินบ้าน</div>
     </div>
     <div class="hero-caption" id="heroCaption">เงินทอน 0 ฿ — (รายรับ 0 – 0 = รายรับแท้จริง 0 ฿)</div>
   </section>
