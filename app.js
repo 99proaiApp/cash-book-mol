@@ -216,8 +216,8 @@ function computeTotals(rec){
   const totalCapital = (rec.capital||[]).reduce((s,c)=> s + (c.amount||0), 0);
   const totalChange = (rec.change.coin||0) + (rec.change.note||0);
   const incomeReal = totalIncome - totalChange;
-  // กำไรสุทธิแท้จริง: หักทั้งรายจ่ายและทุนลงของ/เงินบ้านออกจากรายรับแท้จริง
-  const net = incomeReal - totalExpense - totalCapital;
+  // กำไรสุทธิ: หักเงินบ้านออกจากรายรับแท้จริงเท่านั้น (รายจ่ายถูกใช้ไปแล้วในเงินที่นับได้ จึงไม่หักซ้ำ)
+  const net = incomeReal - totalCapital;
   return { totalIncome, totalExpense, totalCapital, totalChange, incomeReal, net };
 }
 // a day with a saved record but literally zero movement in every field counts the same as
@@ -411,7 +411,7 @@ function renderCards(rec){
   document.getElementById('cardIncomeTotal').textContent = fmtNum(t.incomeReal + t.totalExpense);
   document.getElementById('noteIncomeTotal').textContent = `รายรับแท้จริง ${fmtNum(t.incomeReal)} + รายจ่าย ${fmtNum(t.totalExpense)}`;
   document.getElementById('noteIncomeReal').textContent = `รายรับ ${fmtNum(t.totalIncome)} − เงินทอน ${fmtNum(t.totalChange)}`;
-  document.getElementById('noteNet').textContent = `${fmtNum(t.incomeReal)} − ${fmtNum(t.totalExpense)} − ${fmtNum(t.totalCapital)}`;
+  document.getElementById('noteNet').textContent = `${fmtNum(t.incomeReal)} − ${fmtNum(t.totalCapital)}`;
   document.getElementById('cardExpense').textContent = fmtNum(t.totalExpense);
   document.getElementById('cardCapital').textContent = fmtNum(t.totalCapital);
   document.getElementById('cardNet').textContent = fmtNum(t.net);
@@ -432,7 +432,7 @@ function renderCards(rec){
   document.getElementById('miniCalDay').textContent = d.getDate();
   setFloatingDigits(document.getElementById('cardMonthlyNet'), fmtBaht(monthNow.net));
   document.getElementById('monthlyNetCaption').textContent =
-    `รวมรายรับหักรายจ่าย เงินบ้าน และเงินทอน ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
+    `รวมรายรับแท้จริงหักเงินบ้าน (รายจ่ายหักไปแล้วในเงินที่นับได้) ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
 }
 
 /* ---------- click feedback (glow pulse on green buttons) ---------- */
