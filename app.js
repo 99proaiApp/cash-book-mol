@@ -231,7 +231,8 @@ function monthlyTotals(dateStr){
   let income=0, expense=0, net=0;
   sortedDates().forEach(key=>{
     const kd = new Date(key + 'T00:00:00');
-    if(kd.getFullYear() === d.getFullYear() && kd.getMonth() === d.getMonth()){
+    // สะสมเฉพาะวันที่ 1 ของเดือน ถึงวันที่ที่กำลังดูอยู่ (ไม่รวมวันหลังจากนั้น)
+    if(kd.getFullYear() === d.getFullYear() && kd.getMonth() === d.getMonth() && kd <= d){
       const t = computeTotals(records[key]);
       income += t.incomeReal; expense += t.totalExpense; net += t.net;
     }
@@ -432,7 +433,7 @@ function renderCards(rec){
   document.getElementById('miniCalDay').textContent = d.getDate();
   setFloatingDigits(document.getElementById('cardMonthlyNet'), fmtBaht(monthNow.net));
   document.getElementById('monthlyNetCaption').textContent =
-    `รวมรายรับแท้จริงหักเงินบ้าน (รายจ่ายหักไปแล้วในเงินที่นับได้) ของเดือน${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543}`;
+    `สะสมตั้งแต่วันที่ 1 ถึงวันที่ ${d.getDate()} ${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear()+543} (รายรับแท้จริงหักเงินบ้าน)`;
 }
 
 /* ---------- click feedback (glow pulse on green buttons) ---------- */
