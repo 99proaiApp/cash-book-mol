@@ -709,3 +709,18 @@ body{
   -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
   filter:drop-shadow(0 1px 0 rgba(0,0,0,0.6)) drop-shadow(0 0 7px rgba(242,201,76,0.4));
 }
+
+
+/* หมายเหตุ + ข้อความเงินทอนยังไม่ถึงวัน */
+.note-input{
+  width:100%; box-sizing:border-box; min-height:92px; resize:vertical; margin-bottom:10px;
+  border:1px solid rgba(47,111,237,0.16); border-radius:var(--radius-md); padding:10px 12px;
+  font-size:14px; line-height:1.5; font-family:inherit; background:var(--surface-solid); color:var(--ink);
+}
+.note-input:focus{outline:2px solid var(--net);}
+.pending-note{
+  margin:0 0 10px; padding:8px 11px; border-radius:var(--radius-md); font-size:12px; font-weight:600;
+  color:#9A6700; background:rgba(242,201,76,0.18); border:1px solid rgba(184,134,11,0.3);
+}
+[data-theme="dark"] .pending-note{ color:#F2C94C; background:rgba(242,201,76,0.10); }
+.hist-note{font-size:11px; color:var(--ink-soft); white-space:pre-wrap; word-break:break-word;}

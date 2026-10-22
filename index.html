@@ -398,6 +398,7 @@
     </div>
     <div class="card-body">
       <p class="sub-note">เงินทอนที่จ่ายให้ลูกค้าของวันที่ <span id="carryDateLabel">-</span></p>
+      <p class="pending-note" id="changePendingNote" hidden></p>
       <div class="row-item">
         <span class="row-icon">🪙</span><span class="row-label">เงินทอน (เหรียญ)</span>
         <input type="number" id="changeCoin" step="0.01" placeholder="0" class="row-input">
@@ -410,6 +411,22 @@
       </div>
       <div class="total-line">รวมเงินทอนวันนี้: <span id="changeTotal">฿0.00</span></div>
       <button class="save-btn" data-save="change">✓ บันทึกเงินทอน</button>
+    </div>
+  </section>
+
+  <!-- ===== FORM 5: หมายเหตุ (ข้อความอิสระของวัน ไม่นำไปคำนวณยอด) ===== -->
+  <section class="form-card glass" data-card="note">
+    <div class="card-header">
+      <div class="card-header-left">
+        <span class="step-tab">5</span>
+        <h2>หมายเหตุ</h2>
+      </div>
+      <button class="chevron-btn" aria-label="ย่อ/ขยาย"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+    </div>
+    <div class="card-body">
+      <p class="sub-note">จดข้อความของวันนี้ เช่น เตรียมเงินทอนไว้พรุ่งนี้ (ไม่นำไปคำนวณยอด)</p>
+      <textarea id="noteText" class="note-input" rows="4" maxlength="1000" placeholder="พิมพ์หมายเหตุที่นี่…"></textarea>
+      <button class="save-btn" data-save="note">✓ บันทึกหมายเหตุ</button>
     </div>
   </section>
 

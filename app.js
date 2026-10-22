@@ -185,7 +185,7 @@ function wireAuthUI(){
   });
 }
 function emptyRecord(date){
-  return { date, income:{note:0,coin:0,app:0}, expenses:[], capital:[], change:{coin:0,note:0} };
+  return { date, income:{note:0,coin:0,app:0}, expenses:[], capital:[], change:{coin:0,note:0}, note:'' };
 }
 function getRecord(date){
   if(!records[date]) records[date] = emptyRecord(date);
@@ -194,6 +194,7 @@ function getRecord(date){
   if(!records[date].income) records[date].income = {note:0, coin:0, app:0};
   if(!records[date].expenses) records[date].expenses = [];
   if(!records[date].capital) records[date].capital = [];
+  if(typeof records[date].note !== 'string') records[date].note = '';
   return records[date];
 }
 function sortedDates(){ return Object.keys(records).sort(); }
@@ -214,11 +215,14 @@ function computeTotals(rec){
   const totalIncome = (rec.income.note||0) + (rec.income.coin||0) + (rec.income.app||0);
   const totalExpense = rec.expenses.reduce((s,e)=> s + (e.amount||0), 0);
   const totalCapital = (rec.capital||[]).reduce((s,c)=> s + (c.amount||0), 0);
-  const totalChange = (rec.change.coin||0) + (rec.change.note||0);
+  const rawChange = ((rec.change && rec.change.coin)||0) + ((rec.change && rec.change.note)||0);
+  // เงินทอนของวันล่วงหน้า (หลังวันนี้) ยังไม่หัก จะเริ่มหักเมื่อถึงวันนั้น
+  const pendingChange = !!(rec.date && rec.date > todayStr());
+  const totalChange = pendingChange ? 0 : rawChange;
   const incomeReal = totalIncome - totalChange;
   // กำไรสุทธิ: หักเงินบ้านออกจากรายรับแท้จริงเท่านั้น (รายจ่ายถูกใช้ไปแล้วในเงินที่นับได้ จึงไม่หักซ้ำ)
   const net = incomeReal - totalCapital;
-  return { totalIncome, totalExpense, totalCapital, totalChange, incomeReal, net };
+  return { totalIncome, totalExpense, totalCapital, totalChange, incomeReal, net, rawChange, pendingChange };
 }
 // a day with a saved record but literally zero movement in every field counts the same as
 // "หยุด" (closed/no record) for display and reporting purposes — no real business happened
@@ -358,6 +362,7 @@ function renderForm(){
   document.getElementById('incomeApp').value = rec.income.app || '';
   document.getElementById('changeCoin').value = rec.change.coin || '';
   document.getElementById('changeNote').value = rec.change.note || '';
+  document.getElementById('noteText').value = rec.note || '';
 
   renderExpenseList(rec);
   renderCapitalList(rec);
@@ -411,21 +416,29 @@ function renderCards(rec){
   document.getElementById('cardIncomeReal').textContent = fmtNum(t.incomeReal);
   document.getElementById('cardIncomeTotal').textContent = fmtNum(t.incomeReal + t.totalExpense);
   document.getElementById('noteIncomeTotal').textContent = `รายรับแท้จริง ${fmtNum(t.incomeReal)} + รายจ่าย ${fmtNum(t.totalExpense)}`;
-  document.getElementById('noteIncomeReal').textContent = `รายรับ ${fmtNum(t.totalIncome)} − เงินทอน ${fmtNum(t.totalChange)}`;
+  document.getElementById('noteIncomeReal').textContent = t.pendingChange
+    ? `รายรับ ${fmtNum(t.totalIncome)} (เงินทอน ${fmtNum(t.rawChange)} ยังไม่หัก)`
+    : `รายรับ ${fmtNum(t.totalIncome)} − เงินทอน ${fmtNum(t.totalChange)}`;
   document.getElementById('noteNet').textContent = `${fmtNum(t.incomeReal)} − ${fmtNum(t.totalCapital)}`;
   document.getElementById('cardExpense').textContent = fmtNum(t.totalExpense);
   document.getElementById('cardCapital').textContent = fmtNum(t.totalCapital);
   document.getElementById('cardNet').textContent = fmtNum(t.net);
-  document.getElementById('heroCaption').innerHTML =
-    `เงินทอน <b>${fmtNum(t.totalChange)} ฿</b> — (รายรับ ${fmtNum(t.totalIncome)} – ${fmtNum(t.totalChange)} = รายรับแท้จริง ${fmtNum(t.incomeReal)} ฿) · เงินบ้าน ${fmtNum(t.totalCapital)} ฿ หักออกจากกำไรโดยตรง`;
+  document.getElementById('heroCaption').innerHTML = t.pendingChange
+    ? `เงินทอน <b>${fmtNum(t.rawChange)} ฿</b> — ยังไม่ถึงวัน เงินทอนยังไม่หัก จะหักเมื่อถึงวันที่ ${thaiDate(rec.date)} · เงินบ้าน ${fmtNum(t.totalCapital)} ฿ หักออกจากกำไรโดยตรง`
+    : `เงินทอน <b>${fmtNum(t.totalChange)} ฿</b> — (รายรับ ${fmtNum(t.totalIncome)} – ${fmtNum(t.totalChange)} = รายรับแท้จริง ${fmtNum(t.incomeReal)} ฿) · เงินบ้าน ${fmtNum(t.totalCapital)} ฿ หักออกจากกำไรโดยตรง`;
+  const pn = document.getElementById('changePendingNote');
+  if(pn){
+    pn.hidden = !t.pendingChange;
+    pn.textContent = t.pendingChange ? `ยังไม่ถึงวัน เงินทอนยังไม่หัก (จะหักเมื่อถึงวันที่ ${thaiDate(rec.date)})` : '';
+  }
 
   document.getElementById('chipIncome').textContent = fmtNum(t.totalIncome) + ' ฿';
   document.getElementById('chipExpense').textContent = fmtNum(t.totalExpense) + ' ฿';
   document.getElementById('chipCapital').textContent = fmtNum(t.totalCapital) + ' ฿';
-  document.getElementById('chipChange').textContent = fmtNum(t.totalChange) + ' ฿';
+  document.getElementById('chipChange').textContent = fmtNum(t.rawChange) + ' ฿';
 
   document.getElementById('incomeTotal').textContent = fmtBaht(t.totalIncome);
-  document.getElementById('changeTotal').textContent = fmtBaht(t.totalChange);
+  document.getElementById('changeTotal').textContent = fmtBaht(t.rawChange);
 
   const monthNow = monthlyTotals(activeDate);
   const d = new Date(activeDate + 'T00:00:00');
@@ -539,6 +552,19 @@ async function saveChange(){
   pulseButton(document.querySelector('[data-save="change"]'));
   playTone('success');
   showToast('บันทึกเงินทอนสำเร็จ ✓', 'success', { label:'เลิกทำ', onClick: ()=> restoreRecordSnapshot(snapDate, snapshot) });
+}
+async function saveNote(){
+  const ok = await confirmAction('ยืนยันบันทึกหมายเหตุ', dateAwareMessage('ต้องการบันทึกหมายเหตุใช่หรือไม่?'));
+  if(!ok) return;
+  const snapshot = snapshotRecord(activeDate);
+  const snapDate = activeDate;
+  const rec = getRecord(activeDate);
+  rec.note = document.getElementById('noteText').value.trim();
+  stampEditor(rec);
+  saveAll(); renderCards(rec);
+  pulseButton(document.querySelector('[data-save="note"]'));
+  playTone('success');
+  showToast('บันทึกหมายเหตุสำเร็จ ✓', 'success', { label:'เลิกทำ', onClick: ()=> restoreRecordSnapshot(snapDate, snapshot) });
 }
 async function addExpense(){
   const desc = document.getElementById('expenseDesc').value.trim();
@@ -1142,10 +1168,14 @@ function renderHistoryList(){
     const editedLine = rec.lastEditedBy
       ? `<span class="hist-editor">✏️ แก้ไขล่าสุดโดย ${rec.lastEditedBy}</span>`
       : '';
+    const noteLine = rec.note
+      ? `<span class="hist-note">📝 ${escapeHtml(rec.note.length > 60 ? rec.note.slice(0,60)+'…' : rec.note)}</span>`
+      : '';
     div.innerHTML = `
       <div class="hist-info">
         <span class="hist-date">${dateKey}</span>
         <span class="hist-sub">รับ ${fmtNum(t.totalIncome)} · จ่าย ${fmtNum(t.totalExpense)}</span>
+        ${noteLine}
         ${editedLine}
       </div>
       <div class="hist-actions">
@@ -1159,7 +1189,7 @@ function renderHistoryList(){
 
 /* ---------- export: CSV ---------- */
 function buildCsvRows(){
-  const rows = [['date','income_note','income_coin','income_app','item_type','item_desc','item_category','item_amount','change_coin','change_note','edited_by']];
+  const rows = [['date','income_note','income_coin','income_app','item_type','item_desc','item_category','item_amount','change_coin','change_note','edited_by','note']];
   sortedDates().forEach(dateKey=>{
     const rec = records[dateKey];
     const editedBy = rec.lastEditedBy || '';
@@ -1168,14 +1198,15 @@ function buildCsvRows(){
       ...(rec.capital||[]).map(c=>({ type:'ทุนลงของ', desc:c.desc, category:'', amount:c.amount, by:c.by })),
     ];
     if(items.length === 0){
-      rows.push([dateKey, rec.income.note, rec.income.coin, rec.income.app, '', '', '', '', rec.change.coin, rec.change.note, editedBy]);
+      rows.push([dateKey, rec.income.note, rec.income.coin, rec.income.app, '', '', '', '', rec.change.coin, rec.change.note, editedBy, rec.note||'']);
     }else{
       items.forEach((it, idx)=>{
         rows.push([
           dateKey, idx===0?rec.income.note:'', idx===0?rec.income.coin:'', idx===0?rec.income.app:'',
           it.type, it.desc, it.category, it.amount,
           idx===0?rec.change.coin:'', idx===0?rec.change.note:'',
-          idx===0?editedBy:(it.by||'')
+          idx===0?editedBy:(it.by||''),
+          idx===0?(rec.note||''):''
         ]);
       });
     }
@@ -1492,6 +1523,7 @@ async function importCsvFile(file){
   // old backups (before "ทุนลงของ, เงินบ้าน" existed) used a 9-column layout with no item_type
   // column — detect which layout this file is so old backups still import correctly.
   const hasItemType = header.some(h => (h||'').trim() === 'item_type');
+  const noteCol = header.findIndex(h => (h||'').trim() === 'note');
   const rows = allRows.slice(1);
   const affectedDates = new Set();
   let lastDate = null;
@@ -1546,6 +1578,14 @@ async function importCsvFile(file){
       if(incApp !== undefined && incApp !== '') rec.income.app = parseFloat(incApp)||0;
       if(chCoin !== undefined && chCoin !== '') rec.change.coin = parseFloat(chCoin)||0;
       if(chNote !== undefined && chNote !== '') rec.change.note = parseFloat(chNote)||0;
+    }
+    if(noteCol >= 0 && cols[noteCol] && cols[noteCol].trim()){
+      const nt = cols[noteCol].trim();
+      if(mode === 'merge' && rec.note && rec.note.trim()){
+        if(!rec.note.includes(nt)) rec.note = rec.note.trim() + '\n' + nt;
+      }else{
+        rec.note = nt;
+      }
     }
     if(itemDesc && itemDesc.trim()){
       if((itemType||'').trim() === 'ทุนลงของ'){
@@ -1642,6 +1682,7 @@ function startApp(){
       const type = btn.getAttribute('data-save');
       if(type === 'income') saveIncome();
       if(type === 'change') saveChange();
+      if(type === 'note') saveNote();
     });
   });
 
